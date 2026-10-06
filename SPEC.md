@@ -13,7 +13,7 @@ Natuurliefhebbers, (natuur)fotografen en wandelaars.
 4. Logboek/indexboek met dieren bijhouden
 5. Interactieve kaart met pinpoints van waarnemingen tonen
 6. Dierinformatie tonen
-7. Zelfzaamheid van dieren bepalen
+7. Zeldzaamheid van dieren bepalen
 8. Badgesysteem bijhouden
 
 ## Tech stack (voorkeur, open voor discussie)
@@ -23,11 +23,12 @@ Natuurliefhebbers, (natuur)fotografen en wandelaars.
 - Foto-opslag: lokaal bewaren en in latere fase Cloudflare R2 gebruiken
 - AI / model: BioCLIP (pytorch) en in latere fase eigen VPS of cloud container
 
-## Wat ik nog niet weet
-- Welke API gebruik ik best om diersoorten in te laden?
-- Hoe comprimeer ik best afbeeldingen en waar worden deze bewaard?
-- Hoe worden de dieren in het logboek verdeeld - per klasse, per zeldzaamheid...?
-- Wat zal de layout worden van de applicatie?
+## Gemaakte Keuzes & Specificaties (v1)
+- **Database & Datamodel**: SQLite met SQLModel. Dieren hebben basisvelden (ID, wetenschappelijke naam, nederlandse naam, zeldzaamheid, beschrijving, afbeelding) aangevuld met een optioneel `extra_info` JSON/tekst veld voor flexibele dierinformatie (leefgebied, afmetingen, etc.).
+- **AI-integratie**: Mock-AI implementatie voor snelle ontwikkeling in v1, met architecturale voorbereiding voor toekomstige BioCLIP (PyTorch) integratie.
+- **API & Endpoints**: REST endpoints voor Codex (GET), Waarnemingen (GET/POST met foto-upload en EXIF-extractie), en Badges (GET).
+- **Foto-opslag**: Lokaal bestandsbeheer met voorbereiding voor Cloudflare R2.
+- **Niet in scope (v1)**: Mobiel gebruik op gsm, accountsysteem, wereldwijd gebruik, zoodieren.
 
 ## Niet in scope (v1)
 - Mobiel gebruik op gsm
