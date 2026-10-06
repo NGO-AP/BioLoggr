@@ -13,7 +13,7 @@ Dit is mijn eerste project op zelfstandige basis en mijn eerste kennismaking met
 
 ## Stijl en verwachtingen
 - Vraag bij twijfel. Maak geen aannames over architectuur, naamgeving of scope — stel de vraag
-- Leg niet uit wat ik al weet. Ik ken Python, OOP, Git en de basisprincipes van software-architectuur ???
+- Leg niet uit wat ik al weet. Ik ken basisprincipes van Python en OOP.a
 - Geef wél context bij keuzes die niet voor de hand liggen
 - Wees direct. Geen disclaimers, geen "uiteraard!", geen onnodige inleidingen
 

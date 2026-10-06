@@ -36,4 +36,4 @@ Natuurliefhebbers, (natuur)fotografen en wandelaars.
 - Keuze om ook zoodieren waar te nemen bij het opladen van foto's
 
 ## Kwaliteitseisen
-- 
+- Elk elk element uit de code wordt na het bouwen getest.
