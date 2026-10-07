@@ -29,12 +29,19 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 @app.on_event("startup")
 def on_startup():
     init_db()
-    # Seed initial data if empty
+    # Seed initial data if empty or count < 6
     from backend.database import engine
     with Session(engine) as session:
-        animal_count = session.exec(select(Animal)).first()
-        if not animal_count:
+        animals = session.exec(select(Animal)).all()
+        if not animals or len(animals) < 6:
+            # Clear existing if partial
+            for a in animals:
+                session.delete(a)
+            session.commit()
             seed_animals(session)
+            
+        badges = session.exec(select(Badge)).all()
+        if not badges:
             seed_badges(session)
 
 def seed_animals(session: Session):
@@ -42,34 +49,92 @@ def seed_animals(session: Session):
         Animal(
             scientific_name="Vulpes vulpes",
             dutch_name="Rode Vos",
+            category="Zoogdieren",
             rarity="Common",
             description="Een middelgrote roofdier uit de hondenfamilie met een opvallende roodachtige vacht en pluizige staart.",
             image_url="/uploads/default_fox.jpg",
-            extra_info={"habitat": "Bossen, duinen, stedelijk gebied", "diet": "Alleseter", "size": "60-90 cm"}
+            extra_info={
+                "habitat": "Bossen, duinen, stedelijk gebied",
+                "diet": "Alleseter (knaagdieren, konijnen, vruchten, insecten)",
+                "size": "60-90 cm (staart 30-50 cm)",
+                "reproduction": "Paartijd in winter, 3-6 jongen per nest (welpen)",
+                "status_bedreiging": "Niet bedreigd (LC)"
+            }
         ),
         Animal(
             scientific_name="Capreolus capreolus",
             dutch_name="Ree",
+            category="Zoogdieren",
             rarity="Common",
             description="Een kleine esdoornhertachtige die vaak voorkomt in bosrijke gebieden en open velden.",
             image_url="/uploads/default_roe.jpg",
-            extra_info={"habitat": "Bossen en randen van landbouwgrond", "diet": "Plantaardig", "size": "95-135 cm"}
+            extra_info={
+                "habitat": "Bossen en randen van landbouwgrond",
+                "diet": "Bladeren, knoppen, kruiden en jonge scheuten",
+                "size": "95-135 cm (schofthoogte 60-75 cm)",
+                "reproduction": "Bronsttijd in juli/augustus, 1-3 kalfjes in mei",
+                "status_bedreiging": "Niet bedreigd (LC)"
+            }
         ),
         Animal(
             scientific_name="Asio otus",
             dutch_name="Ransuil",
+            category="Vogels",
             rarity="Rare",
             description="Een middelgrote uil met opvallende oorkuiven en oranjegele ogen.",
             image_url="/uploads/default_owl.jpg",
-            extra_info={"habitat": "Nabij open jachtterreinen en bosjes", "diet": "Knaagdieren", "size": "31-37 cm"}
+            extra_info={
+                "habitat": "Nabij open jachtterreinen en bosjes of naaldbossen",
+                "diet": "Voornamelijk muizen en kleine knaagdieren",
+                "size": "31-37 cm (spanwijdte 90-100 cm)",
+                "reproduction": "Legsel van 4-6 eieren, broedseizoen vanaf maart",
+                "status_bedreiging": "Niet bedreigd (LC)"
+            }
         ),
         Animal(
             scientific_name="Alcedo atthis",
             dutch_name="IJsvogel",
+            category="Vogels",
             rarity="Epic",
             description="Een kleine, fel gekleurde vogel met kobaltblauwe en oranjeveren die jaagt op vis in helder water.",
             image_url="/uploads/default_kingfisher.jpg",
-            extra_info={"habitat": "Stromend zoet water", "diet": "Vis en waterinsecten", "size": "16-17 cm"}
+            extra_info={
+                "habitat": "Stromend zoet water, meren en kanalen met schuilplekken",
+                "diet": "Kleine visjes, waterinsecten en kreeftachtigen",
+                "size": "16-17 cm (spanwijdte 24-26 cm)",
+                "reproduction": "2-3 legsel per jaar van 6-7 eieren in steile oeverwallen",
+                "status_bedreiging": "Gevoelig / Beschermd"
+            }
+        ),
+        Animal(
+            scientific_name="Meles meles",
+            dutch_name="Das",
+            category="Zoogdieren",
+            rarity="Rare",
+            description="Een robuust roofdier met kenmerkende zwart-witte strepen op de kop en een krachtige graver.",
+            image_url="/uploads/default_badger.jpg",
+            extra_info={
+                "habitat": "Loof- en gemengde bossen met nabijgelegen weilanden",
+                "diet": "Regenwormen, insecten, knollen en eikels",
+                "size": "65-80 cm (gewicht tot 15 kg)",
+                "reproduction": "Paartijd in zomer, 2-5 jongen in het voorjaar",
+                "status_bedreiging": "Niet bedreigd (LC)"
+            }
+        ),
+        Animal(
+            scientific_name="Buteo buteo",
+            dutch_name="Buizerd",
+            category="Vogels",
+            rarity="Common",
+            description="Een middelgrote roofvogel met brede vleugels en een korte afgeronde staart die vaak op paaltjes loert.",
+            image_url="/uploads/default_buzzard.jpg",
+            extra_info={
+                "habitat": "Open landschappen afgewisseld met bos",
+                "diet": "Knaagdieren, kleine zoogdieren en reptielen",
+                "size": "50-57 cm (spanwijdte 113-128 cm)",
+                "reproduction": "Legsel van 2-3 eieren in hoge bomen",
+                "status_bedreiging": "Niet bedreigd (LC)"
+            }
         )
     ]
     for a in default_animals:
@@ -95,6 +160,10 @@ def mock_identify_animal(image_path: str):
         return {"scientific_name": "Asio otus", "confidence": 0.89}
     elif "ree" in filename or "roe" in filename:
         return {"scientific_name": "Capreolus capreolus", "confidence": 0.91}
+    elif "das" in filename or "badger" in filename:
+        return {"scientific_name": "Meles meles", "confidence": 0.93}
+    elif "buiz" in filename or "buzzard" in filename:
+        return {"scientific_name": "Buteo buteo", "confidence": 0.92}
     else:
         return {"scientific_name": "Vulpes vulpes", "confidence": 0.96}
 
@@ -102,17 +171,63 @@ def mock_identify_animal(image_path: str):
 def health_check():
     return {"status": "ok", "service": "BioLoggr API"}
 
-@app.get("/api/codex", response_model=List[Animal])
+@app.get("/api/codex")
 def get_codex(session: Session = Depends(get_session)):
     animals = session.exec(select(Animal)).all()
-    return animals
+    result = []
+    for animal in animals:
+        statement = select(Observation).where(Observation.animal_id == animal.id).order_by(Observation.timestamp.desc())
+        latest_obs = session.exec(statement).first()
+        
+        result.append({
+            "id": animal.id,
+            "scientific_name": animal.scientific_name,
+            "dutch_name": animal.dutch_name,
+            "category": animal.category,
+            "rarity": animal.rarity,
+            "description": animal.description,
+            "image_url": animal.image_url,
+            "extra_info": animal.extra_info,
+            "latest_observation": {
+                "id": latest_obs.id,
+                "timestamp": latest_obs.timestamp.isoformat(),
+                "latitude": latest_obs.latitude,
+                "longitude": latest_obs.longitude,
+                "image_path": latest_obs.image_path,
+                "notes": latest_obs.notes,
+                "confidence": latest_obs.confidence
+            } if latest_obs else None
+        })
+    return result
 
-@app.get("/api/codex/{animal_id}", response_model=Animal)
+@app.get("/api/codex/{animal_id}")
 def get_animal_detail(animal_id: int, session: Session = Depends(get_session)):
     animal = session.get(Animal, animal_id)
     if not animal:
         raise HTTPException(status_code=404, detail="Animal not found")
-    return animal
+    
+    statement = select(Observation).where(Observation.animal_id == animal.id).order_by(Observation.timestamp.desc())
+    latest_obs = session.exec(statement).first()
+    
+    return {
+        "id": animal.id,
+        "scientific_name": animal.scientific_name,
+        "dutch_name": animal.dutch_name,
+        "category": animal.category,
+        "rarity": animal.rarity,
+        "description": animal.description,
+        "image_url": animal.image_url,
+        "extra_info": animal.extra_info,
+        "latest_observation": {
+            "id": latest_obs.id,
+            "timestamp": latest_obs.timestamp.isoformat(),
+            "latitude": latest_obs.latitude,
+            "longitude": latest_obs.longitude,
+            "image_path": latest_obs.image_path,
+            "notes": latest_obs.notes,
+            "confidence": latest_obs.confidence
+        } if latest_obs else None
+    }
 
 @app.post("/api/observations")
 async def create_observation(
@@ -122,7 +237,6 @@ async def create_observation(
     notes: Optional[str] = None,
     session: Session = Depends(get_session)
 ):
-    # Save uploaded file locally
     file_extension = os.path.splitext(file.filename)[1]
     saved_filename = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{file.filename}"
     file_path = os.path.join(UPLOAD_DIR, saved_filename)
@@ -130,12 +244,10 @@ async def create_observation(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    # Run mock AI identification
     ai_result = mock_identify_animal(file_path)
     sci_name = ai_result["scientific_name"]
     confidence = ai_result["confidence"]
     
-    # Find animal in database
     animal = session.exec(select(Animal).where(Animal.scientific_name == sci_name)).first()
     if not animal:
         animal = session.exec(select(Animal)).first()
@@ -153,7 +265,6 @@ async def create_observation(
     session.commit()
     session.refresh(observation)
     
-    # Check and unlock first observation badge if applicable
     badges = session.exec(select(Badge)).all()
     unlocked_badges = []
     for badge in badges:
@@ -179,6 +290,7 @@ async def create_observation(
             "id": animal.id,
             "scientific_name": animal.scientific_name,
             "dutch_name": animal.dutch_name,
+            "category": animal.category,
             "rarity": animal.rarity,
             "description": animal.description,
             "image_url": animal.image_url,

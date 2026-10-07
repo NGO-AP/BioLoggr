@@ -1,6 +1,6 @@
 # BioLoggr — Prompt- en Voortgangsplan
 
-Dit document bevat het gestructureerde overzicht van uitgevoerde mijlpalen, het prompt logboek en de geplande vervolgprompts (roadmap) voor de ontwikkeling van de BioLoggr applicatie.
+Dit document bevat het gestructureerde overzicht van uitgevoerde mijlpalen, het prompt logboek en eventuele toekomstige vervolgstappen voor de ontwikkeling van de BioLoggr applicatie.
 
 ---
 
@@ -36,34 +36,27 @@ Dit document bevat het gestructureerde overzicht van uitgevoerde mijlpalen, het 
   - **Prompt / Actie:** Bouwen van [`frontend/src/app/pages/codex/codex.component.ts`](frontend/src/app/pages/codex/codex.component.ts) met Signals, `@for`/`@if` control flow en responsieve dierkaarten.
   - **Validatie:** Visuele en functionele weergave van de codex met ontdekte en onbekende dieren.
 
----
-
-## Deel 2: Geplande Vervolgprompts (Roadmap)
-
 - **Prompt 3.1: Upload Interface & State**
   - **Doel:** Aanmaken van de observatiepagina met uploadmogelijkheid.
-  - **Prompt / Actie:** 
-    ```text
-    Maak het component 'frontend/src/app/pages/observe/observe.component.ts' aan met een drag-and-drop fotoselectiezone, live image preview, een notitieveld voor observatiedetails, en lokale reactive state (Signals) voor de geselecteerde afbeelding en formulierinvoer. Voeg tevens de router-route toe in frontend/src/app/app.routes.ts.
-    ```
+  - **Prompt / Actie:** Aanmaken van [`frontend/src/app/pages/observe/observe.component.ts`](frontend/src/app/pages/observe/observe.component.ts) met drag-and-drop fotoselectie, live image preview, notitieveld en Signals. Toevoegen van route `/observe` en navigatielink.
+  - **Validatie:** Succesvolle componentinitialisatie en unit tests.
 
 - **Prompt 3.2: API & Mock-AI Integratie**
   - **Doel:** Koppelen van het uploadformulier aan de backend REST API en tonen van herkenningsresultaten.
-  - **Prompt / Actie:**
-    ```text
-    Koppel het uploadformulier in observe.component.ts via ApiService aan de POST /api/observations endpoint met FormData. Implementeer na een succesvolle upload de weergave van het herkenningsresultaat (geïdentificeerd dier, confidence score, en extra_info) en een melding van nieuw ontgrendelde badges.
-    ```
+  - **Prompt / Actie:** Uitbreiden van [`frontend/src/app/services/api.service.ts`](frontend/src/app/services/api.service.ts) met `createObservation()` en integratie in `observe.component.ts` inclusief resultaatkaart en confidence score.
+  - **Validatie:** Volledige end-to-end werking met backend AI-mock en succesvolle API responsverwerking.
 
 - **Prompt 3.3: Gamificatie & Badges**
   - **Doel:** Uitbreiden van de gamificatie-ervaring met een dedicated badges-overzicht.
-  - **Prompt / Actie:**
-    ```text
-    Bouw het component 'frontend/src/app/pages/badges/badges.component.ts' en koppel dit aan de GET /api/badges endpoint. Toon een overzicht van alle behaalde en nog te ontgrendelen badges met visuele indicators (icoon, beschrijving, ontgrendelstatus).
-    ```
+  - **Prompt / Actie:** Aanmaken van [`frontend/src/app/pages/badges/badges.component.ts`](frontend/src/app/pages/badges/badges.component.ts), toevoegen van `getBadges()` in `api.service.ts`, en instellen van route `/badges` met headerlink.
+  - **Validatie:** Correcte weergave van behaalde en vergrendelde badges met visuele indicators.
 
 - **Prompt 3.4: Geautomatiseerde Frontend Verificatie**
   - **Doel:** Waarborgen van de frontendkwaliteit door middel van geautomatiseerde tests en builds.
-  - **Prompt / Actie:**
-    ```text
-    Schrijf unit tests in 'frontend/src/app/services/api.service.spec.ts' en component spec files voor ApiService en de nieuwe schermen. Voer vervolgens 'npm run build' uit in de frontend map om te valideren dat er geen TypeScript- of bundelfouten aanwezig zijn.
-    ```
+  - **Prompt / Actie:** Uitbreiden van unit tests in [`frontend/src/app/services/api.service.spec.ts`](frontend/src/app/services/api.service.spec.ts) en [`frontend/src/app/pages/badges/badges.component.spec.ts`](frontend/src/app/pages/badges/badges.component.spec.ts), en uitvoeren van `npm run build`.
+  - **Validatie:** Alle tests en productiebuild (`npm run build`) succesvol voltooid zonder fouten of waarschuwingen.
+
+---
+
+## Deel 2: Geplande Vervolgprompts (Roadmap)
+*Momenteel zijn alle geplande kernfunctionaliteiten en sprints succesvol afgerond.*

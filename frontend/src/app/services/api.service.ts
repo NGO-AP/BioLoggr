@@ -2,16 +2,6 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-export interface Animal {
-  id: number;
-  scientific_name: string;
-  dutch_name: string;
-  rarity: string;
-  description: string;
-  image_url?: string;
-  extra_info?: Record<string, any>;
-}
-
 export interface Observation {
   id: number;
   animal_id: number;
@@ -21,6 +11,18 @@ export interface Observation {
   timestamp: string;
   confidence: number;
   notes?: string;
+}
+
+export interface Animal {
+  id: number;
+  scientific_name: string;
+  dutch_name: string;
+  category: string;
+  rarity: string;
+  description: string;
+  image_url?: string;
+  extra_info?: Record<string, any>;
+  latest_observation?: Observation | null;
 }
 
 export interface Badge {
@@ -50,8 +52,8 @@ export class ApiService {
     return this.http.get<Observation[]>(`${this.baseUrl}/observations`);
   }
 
-  createObservation(formData: FormData, lat: number, lon: number): Observable<Observation> {
-    return this.http.post<Observation>(`${this.baseUrl}/observations?latitude=${lat}&longitude=${lon}`, formData);
+  createObservation(formData: FormData, lat: number, lon: number): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/observations?latitude=${lat}&longitude=${lon}`, formData);
   }
 
   getBadges(): Observable<Badge[]> {
