@@ -1,6 +1,6 @@
 import os
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import FastAPI, Depends, File, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -78,7 +78,7 @@ def seed_animals(session: Session):
 
 def seed_badges(session: Session):
     default_badges = [
-        Badge(name="Eerste Waarneming", description="Registreer je allerf eerste dier in de codex.", icon="🏆", unlocked_at=None),
+        Badge(name="Eerste Waarneming", description="Registreer je aller eerste dier in de codex.", icon="🏆", unlocked_at=None),
         Badge(name="Nachtvlinder", description="Vind een zeldzaam dier 's avonds of 's nachts.", icon="🌙", unlocked_at=None),
         Badge(name="Boswachter", description="Ontdek alle algemene dieren in je lokale omgeving.", icon="🌲", unlocked_at=None)
     ]
@@ -88,8 +88,6 @@ def seed_badges(session: Session):
 
 # Mock AI Service for Animal Identification
 def mock_identify_animal(image_path: str):
-    # For mock purpose, alternate or pick based on filename/random
-    # Let's default to Rode Vos or IJsvogel if filename contains specific words, or cycle/default to Rode Vos with high confidence
     filename = os.path.basename(image_path).lower()
     if "ijs" in filename or "king" in filename:
         return {"scientific_name": "Alcedo atthis", "confidence": 0.94}
@@ -116,7 +114,7 @@ def get_animal_detail(animal_id: int, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="Animal not found")
     return animal
 
-@app.post("/api/observations", response_model=Observation)
+@app.post("/api/observations")
 async def create_observation(
     file: UploadFile = File(...),
     latitude: float = Query(51.2194, description="Latitude of observation"),
@@ -126,7 +124,7 @@ async def create_observation(
 ):
     # Save uploaded file locally
     file_extension = os.path.splitext(file.filename)[1]
-    saved_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{file.filename}"
+    saved_filename = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{file.filename}"
     file_path = os.path.join(UPLOAD_DIR, saved_filename)
     
     with open(file_path, "wb") as buffer:
@@ -140,7 +138,6 @@ async def create_observation(
     # Find animal in database
     animal = session.exec(select(Animal).where(Animal.scientific_name == sci_name)).first()
     if not animal:
-        # Fallback to first animal if not found
         animal = session.exec(select(Animal)).first()
         
     observation = Observation(
@@ -155,7 +152,40 @@ async def create_observation(
     session.add(observation)
     session.commit()
     session.refresh(observation)
-    return observation
+    
+    # Check and unlock first observation badge if applicable
+    badges = session.exec(select(Badge)).all()
+    unlocked_badges = []
+    for badge in badges:
+        if badge.name == "Eerste Waarneming" and not badge.unlocked_at:
+            badge.unlocked_at = datetime.now(timezone.utc)
+            session.add(badge)
+            session.commit()
+            session.refresh(badge)
+            unlocked_badges.append(badge)
+
+    return {
+        "observation": {
+            "id": observation.id,
+            "animal_id": observation.animal_id,
+            "latitude": observation.latitude,
+            "longitude": observation.longitude,
+            "image_path": observation.image_path,
+            "timestamp": observation.timestamp.isoformat() if observation.timestamp else None,
+            "confidence": observation.confidence,
+            "notes": observation.notes
+        },
+        "animal": {
+            "id": animal.id,
+            "scientific_name": animal.scientific_name,
+            "dutch_name": animal.dutch_name,
+            "rarity": animal.rarity,
+            "description": animal.description,
+            "image_url": animal.image_url,
+            "extra_info": animal.extra_info
+        },
+        "badges": unlocked_badges
+    }
 
 @app.get("/api/observations", response_model=List[Observation])
 def get_observations(session: Session = Depends(get_session)):

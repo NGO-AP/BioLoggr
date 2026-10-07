@@ -25,7 +25,7 @@ def session_fixture():
             extra_info={"habitat": "Forest"}
         ))
         session.add(Badge(
-            name="Test Badge",
+            name="Eerste Waarneming",
             description="Test badge description",
             icon="🏆"
         ))
@@ -61,7 +61,7 @@ def test_get_badges(client: TestClient):
     assert response.status_code == 200
     data = response.json()
     assert len(data) >= 1
-    assert data[0]["name"] == "Test Badge"
+    assert data[0]["name"] == "Eerste Waarneming"
 
 def test_create_observation(client: TestClient, tmp_path):
     # Create a dummy image file
@@ -76,7 +76,9 @@ def test_create_observation(client: TestClient, tmp_path):
     
     assert response.status_code == 200
     data = response.json()
-    assert data["latitude"] == 51.2194
-    assert data["longitude"] == 4.4025
-    assert data["confidence"] > 0.0
-    assert "image_path" in data
+    assert "observation" in data
+    assert "animal" in data
+    assert data["observation"]["latitude"] == 51.2194
+    assert data["observation"]["longitude"] == 4.4025
+    assert data["observation"]["confidence"] > 0.0
+    assert data["animal"]["scientific_name"] == "Vulpes vulpes"
