@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 from backend.database import init_db, get_session
 from backend.models import Animal, Observation, Badge
 from backend.seed import seed_species, seed_badges
+from backend.services.bioclip_service import bioclip
 
 app = FastAPI(title="BioLoggr API", version="1.0.0")
 
@@ -32,14 +33,11 @@ def on_startup():
     init_db()
     from backend.database import engine
     with Session(engine) as session:
-        # Gebruik de JSON-seeder als species_benelux.json aanwezig is
-        import os
         json_path = os.path.join(os.path.dirname(__file__), "data", "species_benelux.json")
         if os.path.exists(json_path):
             seed_species(session)
             seed_badges(session)
         else:
-            # Fallback: seed de 6 standaard-dieren als de JSON er nog niet is
             animals = session.exec(select(Animal)).all()
             if not animals or len(animals) < 6:
                 for a in animals:
@@ -49,6 +47,10 @@ def on_startup():
             badges = session.exec(select(Badge)).all()
             if not badges:
                 seed_badges(session)
+
+        # BioCLIP in background-thread laden (niet-blokkerend)
+        all_animals = session.exec(select(Animal)).all()
+    bioclip.load_in_background(all_animals)
 
 def _seed_fallback_animals(session: Session):
     default_animals = [
@@ -165,7 +167,26 @@ def mock_identify_animal(image_path: str):
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok", "service": "BioLoggr API"}
+    return {
+        "status": "ok",
+        "service": "BioLoggr API",
+        "bioclip": "ready" if bioclip.is_ready else ("loading" if bioclip.is_loading else "unavailable"),
+    }
+
+@app.post("/api/identify")
+async def identify_image(file: UploadFile = File(...)):
+    """
+    Identificeer een soort op basis van een foto.
+    Retourneert top-3 AI-suggesties ZONDER een waarneming op te slaan.
+    """
+    if bioclip.load_error:
+        return {"status": "error", "message": bioclip.load_error, "suggestions": []}
+    if not bioclip.is_ready:
+        return {"status": "loading", "message": "AI-model wordt geladen…", "suggestions": []}
+
+    image_bytes = await file.read()
+    suggestions = bioclip.predict(image_bytes, top_k=3)
+    return {"status": "ready", "suggestions": suggestions}
 
 @app.get("/api/codex")
 def get_codex(session: Session = Depends(get_session)):
@@ -229,26 +250,53 @@ def get_animal_detail(animal_id: int, session: Session = Depends(get_session)):
 @app.post("/api/observations")
 async def create_observation(
     file: UploadFile = File(...),
-    latitude: float = Query(51.2194, description="Latitude of observation"),
-    longitude: float = Query(4.4025, description="Longitude of observation"),
+    latitude: Optional[float] = Query(None, description="Latitude of observation"),
+    longitude: Optional[float] = Query(None, description="Longitude of observation"),
     notes: Optional[str] = None,
     is_wild: bool = Query(True, description="True = in het wild, False = dierentuin/opvang"),
+    animal_id: Optional[int] = Query(None, description="Door gebruiker bevestigde soort-ID (van /identify)"),
+    match_score: Optional[float] = Query(None, description="Betrouwbaarheidsscore (0.0-1.0) zoals getoond bij identificatie"),
     session: Session = Depends(get_session)
 ):
-    file_extension = os.path.splitext(file.filename)[1]
-    saved_filename = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{file.filename}"
+    # Bestand opslaan
+    safe_name = (file.filename or "upload.jpg").replace(" ", "_")
+    saved_filename = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{safe_name}"
     file_path = os.path.join(UPLOAD_DIR, saved_filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
-    ai_result = mock_identify_animal(file_path)
-    sci_name = ai_result["scientific_name"]
-    confidence = ai_result["confidence"]
-    
-    animal = session.exec(select(Animal).where(Animal.scientific_name == sci_name)).first()
-    if not animal:
-        animal = session.exec(select(Animal)).first()
+    image_bytes = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(image_bytes)
+
+    # Soort bepalen: gebruiker-keuze > BioCLIP > mock-fallback
+    if animal_id is not None:
+        animal = session.get(Animal, animal_id)
+        if not animal:
+            raise HTTPException(status_code=404, detail="Dier niet gevonden")
+        # Gebruik de meegestuurde score exact zoals getoond in de UI (geen herberekening)
+        if match_score is not None:
+            confidence = float(match_score)
+        elif bioclip.is_ready:
+            results = bioclip.predict(image_bytes, top_k=3)
+            match = next((r for r in results if r["animal_id"] == animal_id), None)
+            confidence = match["confidence"] if match else results[0]["confidence"] if results else 0.99
+        else:
+            confidence = 0.99
+    elif bioclip.is_ready:
+        results = bioclip.predict(image_bytes, top_k=1)
+        if results:
+            top = results[0]
+            animal = session.get(Animal, top["animal_id"])
+            confidence = top["confidence"]
+        else:
+            animal = session.exec(select(Animal)).first()
+            confidence = 0.5
+    else:
+        # Mock-fallback als BioCLIP nog niet klaar is
+        ai_result = mock_identify_animal(file_path)
+        sci_name = ai_result["scientific_name"]
+        confidence = ai_result["confidence"]
+        animal = session.exec(select(Animal).where(Animal.scientific_name == sci_name)).first()
+        if not animal:
+            animal = session.exec(select(Animal)).first()
         
     observation = Observation(
         animal_id=animal.id,

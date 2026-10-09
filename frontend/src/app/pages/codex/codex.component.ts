@@ -35,65 +35,91 @@ import { ApiService, Animal } from '../../services/api.service';
       } @else {
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <!-- Linker Zijbalk (Filters) — sticky zodat filters altijd zichtbaar zijn -->
-          <aside class="space-y-6 lg:col-span-1 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pb-4">
+          <aside class="space-y-3 lg:col-span-1 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pb-2">
+
+            <!-- Herbruikbare filter-knop macro: dezelfde stijl voor alle 3 blokken -->
             <!-- Categorie filter -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
-              <h3 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Taxonomische Klasse</h3>
-              <div class="flex flex-col space-y-1">
-                @for (cat of categories; track cat) {
-                  <button
-                    type="button"
-                    (click)="selectedCategory.set(cat)"
-                    class="flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer w-full"
-                    [class.bg-emerald-600]="selectedCategory() === cat"
+            <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-sm space-y-1">
+              <h3 class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-1 pb-1">Taxonomische Klasse</h3>
+              @for (cat of categories; track cat) {
+                <button
+                  type="button"
+                  (click)="selectedCategory.set(cat)"
+                  class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer w-full"
+                  [class.bg-emerald-600]="selectedCategory() === cat"
+                  [class.text-white]="selectedCategory() === cat"
+                  [class.text-gray-600]="selectedCategory() !== cat"
+                  [class.dark:text-gray-300]="selectedCategory() !== cat"
+                  [class.hover:bg-gray-100]="selectedCategory() !== cat"
+                  [class.dark:hover:bg-gray-700]="selectedCategory() !== cat"
+                >
+                  <span>{{ cat }}</span>
+                  <span class="tabular-nums ml-1 px-1 py-0.5 rounded text-[10px] font-semibold"
+                    [class.bg-emerald-500]="selectedCategory() === cat"
                     [class.text-white]="selectedCategory() === cat"
-                    [class.text-gray-600]="selectedCategory() !== cat"
-                    [class.dark:text-gray-300]="selectedCategory() !== cat"
-                    [class.hover:bg-gray-100]="selectedCategory() !== cat"
-                    [class.dark:hover:bg-gray-700]="selectedCategory() !== cat"
-                  >
-                    <span>{{ cat }}</span>
-                    <span class="text-xs font-semibold tabular-nums ml-2 px-1.5 py-0.5 rounded"
-                      [class.bg-emerald-500]="selectedCategory() === cat"
-                      [class.text-white]="selectedCategory() === cat"
-                      [class.bg-gray-100]="selectedCategory() !== cat"
-                      [class.dark:bg-gray-700]="selectedCategory() !== cat"
-                      [class.text-gray-500]="selectedCategory() !== cat"
-                      [class.dark:text-gray-400]="selectedCategory() !== cat"
-                    >{{ categoryCounts()[cat] ?? 0 }}</span>
-                  </button>
-                }
-              </div>
+                    [class.bg-gray-100]="selectedCategory() !== cat"
+                    [class.dark:bg-gray-700]="selectedCategory() !== cat"
+                    [class.text-gray-500]="selectedCategory() !== cat"
+                    [class.dark:text-gray-400]="selectedCategory() !== cat"
+                  >{{ categoryCounts()[cat] ?? 0 }}</span>
+                </button>
+              }
             </div>
 
             <!-- Status filter -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
-              <h3 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Ontdekkingsstatus</h3>
-              <div class="flex flex-col space-y-1">
-                @for (status of statuses; track status.id) {
-                  <button
-                    type="button"
-                    (click)="selectedStatus.set(status.id)"
-                    class="flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer w-full"
-                    [class.bg-emerald-600]="selectedStatus() === status.id"
+            <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-sm space-y-1">
+              <h3 class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-1 pb-1">Ontdekkingsstatus</h3>
+              @for (status of statuses; track status.id) {
+                <button
+                  type="button"
+                  (click)="selectedStatus.set(status.id)"
+                  class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer w-full"
+                  [class.bg-emerald-600]="selectedStatus() === status.id"
+                  [class.text-white]="selectedStatus() === status.id"
+                  [class.text-gray-600]="selectedStatus() !== status.id"
+                  [class.dark:text-gray-300]="selectedStatus() !== status.id"
+                  [class.hover:bg-gray-100]="selectedStatus() !== status.id"
+                  [class.dark:hover:bg-gray-700]="selectedStatus() !== status.id"
+                >
+                  <span>{{ status.label }}</span>
+                  <span class="tabular-nums ml-1 px-1 py-0.5 rounded text-[10px] font-semibold"
+                    [class.bg-emerald-500]="selectedStatus() === status.id"
                     [class.text-white]="selectedStatus() === status.id"
-                    [class.text-gray-600]="selectedStatus() !== status.id"
-                    [class.dark:text-gray-300]="selectedStatus() !== status.id"
-                    [class.hover:bg-gray-100]="selectedStatus() !== status.id"
-                    [class.dark:hover:bg-gray-700]="selectedStatus() !== status.id"
-                  >
-                    <span>{{ status.label }}</span>
-                    <span class="text-xs font-semibold tabular-nums ml-2 px-1.5 py-0.5 rounded"
-                      [class.bg-emerald-500]="selectedStatus() === status.id"
-                      [class.text-white]="selectedStatus() === status.id"
-                      [class.bg-gray-100]="selectedStatus() !== status.id"
-                      [class.dark:bg-gray-700]="selectedStatus() !== status.id"
-                      [class.text-gray-500]="selectedStatus() !== status.id"
-                      [class.dark:text-gray-400]="selectedStatus() !== status.id"
-                    >{{ getStatusCount(status.id) }}</span>
-                  </button>
-                }
-              </div>
+                    [class.bg-gray-100]="selectedStatus() !== status.id"
+                    [class.dark:bg-gray-700]="selectedStatus() !== status.id"
+                    [class.text-gray-500]="selectedStatus() !== status.id"
+                    [class.dark:text-gray-400]="selectedStatus() !== status.id"
+                  >{{ getStatusCount(status.id) }}</span>
+                </button>
+              }
+            </div>
+
+            <!-- Zeldzaamheid filter -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-sm space-y-1">
+              <h3 class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-1 pb-1">Zeldzaamheid</h3>
+              @for (r of rarities; track r.id) {
+                <button
+                  type="button"
+                  (click)="selectedRarity.set(r.id)"
+                  class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer w-full"
+                  [class.bg-emerald-600]="selectedRarity() === r.id"
+                  [class.text-white]="selectedRarity() === r.id"
+                  [class.text-gray-600]="selectedRarity() !== r.id"
+                  [class.dark:text-gray-300]="selectedRarity() !== r.id"
+                  [class.hover:bg-gray-100]="selectedRarity() !== r.id"
+                  [class.dark:hover:bg-gray-700]="selectedRarity() !== r.id"
+                >
+                  <span>{{ r.label }}</span>
+                  <span class="tabular-nums ml-1 px-1 py-0.5 rounded text-[10px] font-semibold"
+                    [class.bg-emerald-500]="selectedRarity() === r.id"
+                    [class.text-white]="selectedRarity() === r.id"
+                    [class.bg-gray-100]="selectedRarity() !== r.id"
+                    [class.dark:bg-gray-700]="selectedRarity() !== r.id"
+                    [class.text-gray-500]="selectedRarity() !== r.id"
+                    [class.dark:text-gray-400]="selectedRarity() !== r.id"
+                  >{{ getRarityCount(r.id) }}</span>
+                </button>
+              }
             </div>
           </aside>
 
@@ -130,9 +156,13 @@ import { ApiService, Animal } from '../../services/api.service';
 
                     <!-- Zeldzaamheidstag rechtsboven -->
                     <div class="absolute top-3 right-3">
-                      <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-white/90 backdrop-blur shadow-sm text-gray-800">
-                        {{ animal.rarity }}
-                      </span>
+                      <span class="px-2.5 py-1 text-xs font-semibold rounded-full backdrop-blur shadow-sm"
+                        [class]="animal.rarity === 'Bedreigd'      ? 'bg-red-100/90 text-red-800'    :
+                                 animal.rarity === 'Zeldzaam'      ? 'bg-orange-100/90 text-orange-800' :
+                                 animal.rarity === 'Vrij algemeen' ? 'bg-yellow-100/90 text-yellow-800' :
+                                 animal.rarity === 'Algemeen'      ? 'bg-green-100/90 text-green-800'  :
+                                                                     'bg-white/90 text-gray-800'"
+                      >{{ animal.rarity }}</span>
                     </div>
 
                     <!-- Vergrendeld-badge onderaan zodat het emoji-silhouet zichtbaar blijft -->
@@ -336,6 +366,14 @@ export class CodexComponent implements OnInit {
   ];
   protected readonly selectedStatus = signal<string>('all');
 
+  protected readonly rarities = [
+    { id: 'all',           label: 'Alle' },
+    { id: 'Bedreigd',      label: '⚠️ Bedreigd' },
+    { id: 'Zeldzaam',      label: '🟠 Zeldzaam' },
+    { id: 'Vrij algemeen', label: '🟡 Vrij algemeen' },
+  ];
+  protected readonly selectedRarity = signal<string>('all');
+
   protected readonly searchQuery = signal<string>('');
   protected readonly selectedAnimal = signal<Animal | null>(null);
 
@@ -357,31 +395,48 @@ export class CodexComponent implements OnInit {
     this.searchQuery.set(input.value);
   }
 
-  /** Basislijst na toepassing van zoekterm + statusfilter (niet categorie) */
+  /** Gedeelde zoekhulp */
+  private applySearch(list: Animal[], query: string): Animal[] {
+    if (!query) return list;
+    return list.filter(a =>
+      a.dutch_name.toLowerCase().includes(query) ||
+      a.scientific_name.toLowerCase().includes(query)
+    );
+  }
+
+  /** Basislijst voor categoriecounts: alles BEHALVE categoriefilter */
   private baseForCategory = computed(() => {
     let list = this.animals();
     const status = this.selectedStatus();
+    const rarity = this.selectedRarity();
     const query  = this.searchQuery().toLowerCase().trim();
     if (status === 'discovered')   list = list.filter(a => !!a.latest_observation);
     if (status === 'undiscovered') list = list.filter(a => !a.latest_observation);
-    if (query) list = list.filter(a =>
-      a.dutch_name.toLowerCase().includes(query) ||
-      a.scientific_name.toLowerCase().includes(query)
-    );
-    return list;
+    if (rarity !== 'all')          list = list.filter(a => a.rarity === rarity);
+    return this.applySearch(list, query);
   });
 
-  /** Basislijst na toepassing van zoekterm + categorie (niet statusfilter) */
+  /** Basislijst voor statuscounts: alles BEHALVE statusfilter */
   private baseForStatus = computed(() => {
     let list = this.animals();
-    const cat   = this.selectedCategory();
-    const query = this.searchQuery().toLowerCase().trim();
-    if (cat && cat !== 'Alle klassen') list = list.filter(a => a.category === cat);
-    if (query) list = list.filter(a =>
-      a.dutch_name.toLowerCase().includes(query) ||
-      a.scientific_name.toLowerCase().includes(query)
-    );
-    return list;
+    const cat    = this.selectedCategory();
+    const rarity = this.selectedRarity();
+    const query  = this.searchQuery().toLowerCase().trim();
+    if (cat !== 'Alle klassen')   list = list.filter(a => a.category === cat);
+    if (rarity !== 'all')         list = list.filter(a => a.rarity === rarity);
+    return this.applySearch(list, query);
+  });
+
+  /** Basislijst voor raritycounts: alles BEHALVE rarityfilter */
+  private baseForRarity = computed(() => {
+    let list = this.animals();
+    const cat    = this.selectedCategory();
+    const status = this.selectedStatus();
+    const query  = this.searchQuery().toLowerCase().trim();
+    if (cat !== 'Alle klassen')        list = list.filter(a => a.category === cat);
+    if (status === 'discovered')       list = list.filter(a => !!a.latest_observation);
+    if (status === 'undiscovered')     list = list.filter(a => !a.latest_observation);
+    return this.applySearch(list, query);
   });
 
   /** Aantallen per categoriefilter-optie */
@@ -402,19 +457,26 @@ export class CodexComponent implements OnInit {
     };
   });
 
+  /** Aantallen per zeldzaamheidsfilter-optie */
+  protected rarityCounts = computed(() => {
+    const base = this.baseForRarity();
+    const counts: Record<string, number> = { all: base.length };
+    for (const a of base) counts[a.rarity] = (counts[a.rarity] ?? 0) + 1;
+    return counts;
+  });
+
   protected filteredAnimals = computed(() => {
     let list = this.animals();
     const cat    = this.selectedCategory();
     const status = this.selectedStatus();
+    const rarity = this.selectedRarity();
     const query  = this.searchQuery().toLowerCase().trim();
 
-    if (cat && cat !== 'Alle klassen') list = list.filter(a => a.category === cat);
+    if (cat !== 'Alle klassen')        list = list.filter(a => a.category === cat);
     if (status === 'discovered')       list = list.filter(a => !!a.latest_observation);
     if (status === 'undiscovered')     list = list.filter(a => !a.latest_observation);
-    if (query) list = list.filter(a =>
-      a.dutch_name.toLowerCase().includes(query) ||
-      a.scientific_name.toLowerCase().includes(query)
-    );
+    if (rarity !== 'all')              list = list.filter(a => a.rarity === rarity);
+    list = this.applySearch(list, query);
 
     return [...list].sort((a, b) => a.dutch_name.localeCompare(b.dutch_name));
   });
@@ -422,6 +484,10 @@ export class CodexComponent implements OnInit {
   protected getStatusCount(id: string): number {
     const counts = this.statusCounts();
     return counts[id as keyof typeof counts] ?? 0;
+  }
+
+  protected getRarityCount(id: string): number {
+    return this.rarityCounts()[id] ?? 0;
   }
 
   protected markImageBroken(animalId: number): void {

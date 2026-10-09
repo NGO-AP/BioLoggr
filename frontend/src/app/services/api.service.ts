@@ -26,6 +26,13 @@ export interface Animal {
   latest_observation?: Observation | null;
 }
 
+export interface Suggestion {
+  animal_id: number;
+  dutch_name: string;
+  scientific_name: string;
+  confidence: number;
+}
+
 export interface Badge {
   id: number;
   name: string;
@@ -53,11 +60,27 @@ export class ApiService {
     return this.http.get<Observation[]>(`${this.baseUrl}/observations`);
   }
 
-  createObservation(formData: FormData, lat: number, lon: number, isWild: boolean = true): Observable<any> {
-    return this.http.post<any>(
-      `${this.baseUrl}/observations?latitude=${lat}&longitude=${lon}&is_wild=${isWild}`,
-      formData
-    );
+  identifyImage(file: File): Observable<{ status: string; suggestions: Suggestion[]; message?: string }> {
+    const fd = new FormData();
+    fd.append('file', file);
+    return this.http.post<any>(`${this.baseUrl}/identify`, fd);
+  }
+
+  createObservation(
+    formData: FormData,
+    lat: number | null,
+    lon: number | null,
+    isWild: boolean = true,
+    animalId: number | null = null,
+    matchScore: number | null = null,
+  ): Observable<any> {
+    const params: string[] = [`is_wild=${isWild}`];
+    if (lat !== null && lon !== null) {
+      params.push(`latitude=${lat}`, `longitude=${lon}`);
+    }
+    if (animalId !== null) params.push(`animal_id=${animalId}`);
+    if (matchScore !== null) params.push(`match_score=${matchScore}`);
+    return this.http.post<any>(`${this.baseUrl}/observations?${params.join('&')}`, formData);
   }
 
   getBadges(): Observable<Badge[]> {

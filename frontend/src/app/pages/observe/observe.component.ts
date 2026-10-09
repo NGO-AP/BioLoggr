@@ -1,7 +1,7 @@
 import { Component, signal, inject, afterEveryRender, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { ApiService, Animal, Observation, Badge } from '../../services/api.service';
+import { ApiService, Animal, Observation, Badge, Suggestion } from '../../services/api.service';
 import * as L from 'leaflet';
 import { gps as parseGps } from 'exifr';
 
@@ -138,6 +138,74 @@ const DEFAULT_LON = 4.4;
               (change)="onFileSelected($event)"
             />
           </div>
+
+          <!-- ── AI Suggesties ───────────────────────────────────────────── -->
+          @if (selectedFile()) {
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">🧠 AI Soortidentificatie</label>
+
+              @if (isIdentifying()) {
+                <div class="flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl text-sm text-blue-700 dark:text-blue-400">
+                  <svg class="animate-spin h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Foto wordt geanalyseerd door BioCLIP…
+                </div>
+              } @else if (aiStatus() === 'loading') {
+                <div class="px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl text-sm text-amber-800 dark:text-amber-400">
+                  ⏳ AI-model wordt nog geladen op de achtergrond…
+                </div>
+              } @else if (aiStatus() === 'error') {
+                <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl text-sm text-gray-500 dark:text-gray-400">
+                  ℹ️ AI-identificatie niet beschikbaar.
+                </div>
+              } @else if (suggestions().length > 0) {
+                <div class="space-y-2">
+                  @for (s of suggestions(); track s.animal_id; let i = $index) {
+                    <button
+                      type="button"
+                      (click)="selectSuggestion(s)"
+                      class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all cursor-pointer text-left"
+                      [class]="selectedSuggestion()?.animal_id === s.animal_id
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                        : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-500'"
+                    >
+                      <span class="text-lg font-black w-5 shrink-0"
+                        [class.text-emerald-500]="selectedSuggestion()?.animal_id === s.animal_id"
+                        [class.text-gray-300]="selectedSuggestion()?.animal_id !== s.animal_id"
+                      >{{ i + 1 }}</span>
+                      <div class="flex-1 min-w-0">
+                        <span class="font-semibold text-sm text-gray-900 dark:text-gray-100">{{ s.dutch_name }}</span>
+                        <span class="block text-xs italic text-gray-400 dark:text-gray-500 truncate">{{ s.scientific_name }}</span>
+                      </div>
+                      <!-- Betrouwbaarheids-badge -->
+                      <div class="shrink-0 text-right">
+                        <span class="text-sm font-bold tabular-nums"
+                          [class.text-emerald-600]="s.confidence >= 0.5"
+                          [class.dark:text-emerald-400]="s.confidence >= 0.5"
+                          [class.text-amber-500]="s.confidence >= 0.25 && s.confidence < 0.5"
+                          [class.text-gray-400]="s.confidence < 0.25"
+                        >{{ (s.confidence * 100).toFixed(1) }}%</span>
+                      </div>
+                    </button>
+                  }
+
+                  @if (selectedSuggestion()) {
+                    <p class="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 pt-1">
+                      <span>✓</span>
+                      <strong>{{ selectedSuggestion()!.dutch_name }}</strong> geselecteerd als soort.
+                      <button type="button" (click)="clearSuggestion()"
+                        class="ml-auto text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 underline cursor-pointer"
+                      >Wissen</button>
+                    </p>
+                  } @else {
+                    <p class="text-xs text-gray-400 dark:text-gray-500 pt-1">Klik op een suggestie om de soort te bevestigen, of laat dit leeg voor automatische keuze (suggestie 1).</p>
+                  }
+                </div>
+              }
+            </div>
+          }
 
           <!-- Type waarneming (Wild vs. Dierentuin) -->
           <div class="space-y-2">
@@ -312,6 +380,12 @@ export class ObserveComponent implements OnDestroy {
   protected readonly result = signal<ObservationResult | null>(null);
   protected readonly isWild = signal<boolean>(true);
 
+  // AI-identificatie
+  protected readonly suggestions     = signal<Suggestion[]>([]);
+  protected readonly selectedSuggestion = signal<Suggestion | null>(null);
+  protected readonly isIdentifying   = signal<boolean>(false);
+  protected readonly aiStatus        = signal<'idle' | 'loading' | 'error'>('idle');
+
   protected readonly lat = signal<number>(DEFAULT_LAT);
   protected readonly lon = signal<number>(DEFAULT_LON);
   protected readonly locationSource = signal<LocationSource>('default');
@@ -405,6 +479,16 @@ export class ObserveComponent implements OnDestroy {
     this.notes.set(textarea.value);
   }
 
+  protected selectSuggestion(s: Suggestion): void {
+    this.selectedSuggestion.set(
+      this.selectedSuggestion()?.animal_id === s.animal_id ? null : s
+    );
+  }
+
+  protected clearSuggestion(): void {
+    this.selectedSuggestion.set(null);
+  }
+
   protected onSubmit(): void {
     const file = this.selectedFile();
     if (!file) return;
@@ -414,11 +498,17 @@ export class ObserveComponent implements OnDestroy {
 
     const formData = new FormData();
     formData.append('file', file);
-    if (this.notes()) {
-      formData.append('notes', this.notes());
-    }
+    if (this.notes()) formData.append('notes', this.notes());
 
-    this.apiService.createObservation(formData, this.lat(), this.lon(), this.isWild()).subscribe({
+    // Gebruik geselecteerde suggestie (of suggestie 1 als AI klaar was)
+    const confirmed = this.selectedSuggestion();
+    const autoTop   = !confirmed && this.suggestions().length > 0 ? this.suggestions()[0] : null;
+    const chosen    = confirmed ?? autoTop;
+    const animalId  = chosen?.animal_id ?? null;
+    // Stuur de exacte score mee die de gebruiker zag — backend herberekent NIET
+    const matchScore = chosen?.confidence ?? null;
+
+    this.apiService.createObservation(formData, this.lat(), this.lon(), this.isWild(), animalId, matchScore).subscribe({
       next: (res: any) => {
         this.isUploading.set(false);
         this.result.set(res);
@@ -446,6 +536,10 @@ export class ObserveComponent implements OnDestroy {
     this.placeQuery.set('');
     this.placeResults.set([]);
     this.placeError.set(null);
+    this.suggestions.set([]);
+    this.selectedSuggestion.set(null);
+    this.isIdentifying.set(false);
+    this.aiStatus.set('idle');
   }
 
   // ── Plaatsnaam zoeken ────────────────────────────────────────────────────────
@@ -512,10 +606,33 @@ export class ObserveComponent implements OnDestroy {
 
   private async processFile(file: File): Promise<void> {
     this.selectedFile.set(file);
+    this.suggestions.set([]);
+    this.selectedSuggestion.set(null);
+    this.aiStatus.set('idle');
 
     const reader = new FileReader();
     reader.onload = (e) => this.previewUrl.set(e.target?.result as string);
     reader.readAsDataURL(file);
+
+    // Start AI-identificatie parallel aan EXIF/geolocation
+    this.isIdentifying.set(true);
+    this.apiService.identifyImage(file).subscribe({
+      next: (res) => {
+        this.isIdentifying.set(false);
+        if (res.status === 'ready' && res.suggestions?.length) {
+          this.suggestions.set(res.suggestions);
+          this.aiStatus.set('idle');
+        } else if (res.status === 'loading') {
+          this.aiStatus.set('loading');
+        } else {
+          this.aiStatus.set('error');
+        }
+      },
+      error: () => {
+        this.isIdentifying.set(false);
+        this.aiStatus.set('error');
+      },
+    });
 
     try {
       const gpsData = await parseGps(file);

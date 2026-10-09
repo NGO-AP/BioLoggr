@@ -45,7 +45,10 @@ def client_fixture(session: Session):
 def test_health_check(client: TestClient):
     response = client.get("/api/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "service": "BioLoggr API"}
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["service"] == "BioLoggr API"
+    assert data["bioclip"] in ("ready", "loading", "unavailable")
 
 def test_get_codex(client: TestClient):
     response = client.get("/api/codex")
