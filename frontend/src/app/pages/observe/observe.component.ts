@@ -1,14 +1,15 @@
 import { Component, signal, inject, afterEveryRender, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { ApiService, Animal, Observation, Badge, Suggestion } from '../../services/api.service';
+import { ApiService, Animal, Observation, BadgeSummary, Suggestion } from '../../services/api.service';
+import { ToastService } from '../../services/toast.service';
 import * as L from 'leaflet';
 import { gps as parseGps } from 'exifr';
 
 interface ObservationResult {
   observation: Observation;
   animal: Animal;
-  badges: Badge[];
+  newly_unlocked_badges: BadgeSummary[];
 }
 
 type LocationSource = 'exif' | 'browser' | 'default' | 'manual';
@@ -69,18 +70,26 @@ const DEFAULT_LON = 4.4;
             </div>
           </div>
 
-          @if (res.badges && res.badges.length > 0) {
+          @if (res.newly_unlocked_badges && res.newly_unlocked_badges.length > 0) {
             <div class="border-t border-gray-100 dark:border-gray-700 pt-4 space-y-3">
               <h4 class="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                 <span>🏆</span> Nieuw ontgrendelde badges!
               </h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                @for (badge of res.badges; track badge.id) {
-                  <div class="flex items-center space-x-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-3 rounded-xl">
+                @for (badge of res.newly_unlocked_badges; track badge.id) {
+                  <div
+                    class="flex items-center space-x-3 p-3 rounded-xl border"
+                    [class]="badge.is_challenge
+                      ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700'
+                      : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50'"
+                  >
                     <span class="text-2xl">{{ badge.icon }}</span>
                     <div>
-                      <p class="text-sm font-bold text-amber-900 dark:text-amber-400">{{ badge.name }}</p>
-                      <p class="text-xs text-amber-700 dark:text-amber-500">{{ badge.description }}</p>
+                      @if (badge.is_challenge) {
+                        <span class="text-xs font-bold text-amber-600 dark:text-amber-400">🔥 Uitdaging!</span>
+                      }
+                      <p class="text-sm font-bold text-gray-900 dark:text-gray-100">{{ badge.title }}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">{{ badge.description }}</p>
                     </div>
                   </div>
                 }
@@ -367,6 +376,7 @@ const DEFAULT_LON = 4.4;
 })
 export class ObserveComponent implements OnDestroy {
   private apiService = inject(ApiService);
+  private toastService = inject(ToastService);
 
   private map: L.Map | null = null;
   private marker: L.Marker | null = null;
@@ -512,6 +522,12 @@ export class ObserveComponent implements OnDestroy {
       next: (res: any) => {
         this.isUploading.set(false);
         this.result.set(res);
+        // Toon toast voor elk vrijgespeeld badge
+        if (res.newly_unlocked_badges?.length) {
+          for (const badge of res.newly_unlocked_badges) {
+            this.toastService.showBadgeToast(badge);
+          }
+        }
       },
       error: (err) => {
         this.isUploading.set(false);

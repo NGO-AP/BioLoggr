@@ -1,11 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { ThemeService } from './services/theme.service';
+import { ToastComponent } from './components/toast.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastComponent],
   template: `
     <div class="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col transition-colors">
       <nav class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm sticky top-0 z-50 transition-colors">
@@ -73,6 +74,8 @@ import { ThemeService } from './services/theme.service';
       <main class="flex-1">
         <router-outlet></router-outlet>
       </main>
+
+      <app-toast></app-toast>
 
       <footer class="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-4 text-center text-xs text-gray-500 dark:text-gray-500 transition-colors">
         BioLoggr v1.0 — Natuurwaarnemingen & AI Identificatie

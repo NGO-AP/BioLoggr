@@ -36,11 +36,38 @@ export interface Suggestion {
 }
 
 export interface Badge {
-  id: number;
-  name: string;
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  icon: string;
+  is_challenge: boolean;
+  unlocked: boolean;
+  current: number;
+  target: number;
+  percentage: number;
+  unlocked_at: string | null;
+}
+
+export interface BadgeSummary {
+  id: string;
+  title: string;
   description: string;
   icon: string;
-  unlocked_at?: string;
+  is_challenge: boolean;
+}
+
+export interface Stats {
+  total_observed: number;
+  total_codex: number;
+  total_observations: number;
+  wild_observations: number;
+  zoo_observations: number;
+  by_category: Record<string, number>;
+  badges_unlocked: number;
+  badges_total: number;
+  challenges_unlocked: number;
+  challenges_total: number;
 }
 
 @Injectable({
@@ -91,5 +118,9 @@ export class ApiService {
 
   getBadges(): Observable<Badge[]> {
     return this.http.get<Badge[]>(`${this.baseUrl}/badges`);
+  }
+
+  getStats(): Observable<Stats> {
+    return this.http.get<Stats>(`${this.baseUrl}/stats`);
   }
 }

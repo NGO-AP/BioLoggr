@@ -73,8 +73,16 @@ def test_get_badges(client: TestClient):
     response = client.get("/api/badges")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) >= 1
-    assert data[0]["name"] == "Eerste Waarneming"
+    # Nieuwe dynamische badge-engine retourneert alle 52 badges
+    assert len(data) == 52
+    # Verifieer de vereiste velden van het nieuwe formaat
+    assert "id" in data[0]
+    assert "title" in data[0]
+    assert "unlocked" in data[0]
+    assert "current" in data[0]
+    assert "target" in data[0]
+    assert "percentage" in data[0]
+    assert "is_challenge" in data[0]
 
 def test_create_observation(client: TestClient, tmp_path):
     jpeg_bytes = _make_jpeg_bytes()

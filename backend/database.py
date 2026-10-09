@@ -38,6 +38,21 @@ def init_db():
 
     SQLModel.metadata.create_all(engine)
 
+    # Ensure BadgeUnlock table exists (new table, safe to always run)
+    try:
+        import sqlite3
+        db_path2 = "./biologgr.db"
+        if os.path.exists(db_path2):
+            conn3 = sqlite3.connect(db_path2)
+            conn3.execute(
+                "CREATE TABLE IF NOT EXISTS badgeunlock "
+                "(id INTEGER PRIMARY KEY, badge_id TEXT NOT NULL UNIQUE, unlocked_at DATETIME)"
+            )
+            conn3.commit()
+            conn3.close()
+    except Exception:
+        pass
+
 def get_session():
     with Session(engine) as session:
         yield session
