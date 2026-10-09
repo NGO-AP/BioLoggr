@@ -9,6 +9,7 @@ from sqlmodel import Session, select
 
 from backend.database import init_db, get_session
 from backend.models import Animal, Observation, Badge
+from backend.seed import seed_species, seed_badges
 
 app = FastAPI(title="BioLoggr API", version="1.0.0")
 
@@ -29,22 +30,27 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 @app.on_event("startup")
 def on_startup():
     init_db()
-    # Seed initial data if empty or count < 6
     from backend.database import engine
     with Session(engine) as session:
-        animals = session.exec(select(Animal)).all()
-        if not animals or len(animals) < 6:
-            # Clear existing if partial
-            for a in animals:
-                session.delete(a)
-            session.commit()
-            seed_animals(session)
-            
-        badges = session.exec(select(Badge)).all()
-        if not badges:
+        # Gebruik de JSON-seeder als species_benelux.json aanwezig is
+        import os
+        json_path = os.path.join(os.path.dirname(__file__), "data", "species_benelux.json")
+        if os.path.exists(json_path):
+            seed_species(session)
             seed_badges(session)
+        else:
+            # Fallback: seed de 6 standaard-dieren als de JSON er nog niet is
+            animals = session.exec(select(Animal)).all()
+            if not animals or len(animals) < 6:
+                for a in animals:
+                    session.delete(a)
+                session.commit()
+                _seed_fallback_animals(session)
+            badges = session.exec(select(Badge)).all()
+            if not badges:
+                seed_badges(session)
 
-def seed_animals(session: Session):
+def _seed_fallback_animals(session: Session):
     default_animals = [
         Animal(
             scientific_name="Vulpes vulpes",
@@ -139,16 +145,6 @@ def seed_animals(session: Session):
     ]
     for a in default_animals:
         session.add(a)
-    session.commit()
-
-def seed_badges(session: Session):
-    default_badges = [
-        Badge(name="Eerste Waarneming", description="Registreer je aller eerste dier in de codex.", icon="🏆", unlocked_at=None),
-        Badge(name="Nachtvlinder", description="Vind een zeldzaam dier 's avonds of 's nachts.", icon="🌙", unlocked_at=None),
-        Badge(name="Boswachter", description="Ontdek alle algemene dieren in je lokale omgeving.", icon="🌲", unlocked_at=None)
-    ]
-    for b in default_badges:
-        session.add(b)
     session.commit()
 
 # Mock AI Service for Animal Identification
