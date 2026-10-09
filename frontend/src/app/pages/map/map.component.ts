@@ -141,6 +141,25 @@ export class MapComponent implements OnInit, OnDestroy {
     this.map?.remove();
   }
 
+  /** Wordt aangeroepen vanuit de popup-knop (via window-scope event-delegation) */
+  private onPopupDeleteClick = (e: Event): void => {
+    const btn = (e.target as HTMLElement).closest('[data-del-obs]') as HTMLElement | null;
+    if (!btn) return;
+    const obsId = parseInt(btn.dataset['delObs'] ?? '', 10);
+    const animalId = parseInt(btn.dataset['animalId'] ?? '', 10);
+    if (isNaN(obsId) || isNaN(animalId)) return;
+    if (!confirm('Weet je zeker dat je deze waarneming wilt verwijderen?')) return;
+    this.apiService.deleteObservation(obsId).subscribe({
+      next: () => {
+        // Verwijder het dier uit de lokale lijst (geen waarnemingen meer met locatie)
+        this.animals.update(list => list.filter(a => a.id !== animalId));
+        this.updateMarkers();
+        this.map?.closePopup();
+      },
+      error: () => alert('Verwijderen mislukt. Probeer opnieuw.'),
+    });
+  };
+
   protected onCategoryChange(cat: Category): void {
     this.selectedCategory.set(cat);
     this.updateMarkers();
@@ -170,6 +189,9 @@ export class MapComponent implements OnInit, OnDestroy {
     ).addTo(this.map);
 
     this.markerLayer = L.layerGroup().addTo(this.map);
+
+    // Event-delegation voor de verwijderknop in popups
+    this.map.getContainer().addEventListener('click', this.onPopupDeleteClick);
 
     // Data kan al geladen zijn vóór de kaart geïnitialiseerd was
     if (!this.loading()) {
@@ -228,6 +250,9 @@ export class MapComponent implements OnInit, OnDestroy {
     const name = this.esc(animal.dutch_name);
     const sci  = this.esc(animal.scientific_name);
 
+    const obsId = obs.id;
+    const animalId = animal.id;
+
     return `
       <div style="width:210px;font-family:system-ui,sans-serif;background:#111827">
         <img src="${imgUrl}" alt="${name}"
@@ -236,12 +261,21 @@ export class MapComponent implements OnInit, OnDestroy {
           <div style="font-weight:700;font-size:14px;color:#f9fafb;line-height:1.3">${name}</div>
           <div style="font-style:italic;font-size:11px;color:#6b7280;margin:2px 0 5px">${sci}</div>
           <div style="font-size:11px;color:#4b5563;margin-bottom:10px">📅 ${date}</div>
-          <a href="/"
-            style="display:block;text-align:center;background:#10b981;color:#fff;
-                   font-size:12px;font-weight:600;padding:5px 0;border-radius:6px;
-                   text-decoration:none">
-            Bekijk in Codex →
-          </a>
+          <div style="display:flex;gap:6px">
+            <a href="/?open=${animalId}"
+              style="flex:1;text-align:center;background:#10b981;color:#fff;
+                     font-size:12px;font-weight:600;padding:5px 0;border-radius:6px;
+                     text-decoration:none">
+              Codex →
+            </a>
+            <button
+              data-del-obs="${obsId}"
+              data-animal-id="${animalId}"
+              style="flex:0 0 auto;background:#ef4444;border:none;color:#fff;
+                     font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;cursor:pointer">
+              🗑️
+            </button>
+          </div>
         </div>
       </div>`;
   }

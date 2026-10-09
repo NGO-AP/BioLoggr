@@ -8,6 +8,7 @@ export interface Observation {
   latitude: number | null;
   longitude: number | null;
   image_path: string;
+  thumbnail_path?: string | null;
   timestamp: string;
   confidence: number;
   notes?: string;
@@ -24,6 +25,7 @@ export interface Animal {
   image_url?: string;
   extra_info?: Record<string, any>;
   latest_observation?: Observation | null;
+  all_observations?: Observation[];
 }
 
 export interface Suggestion {
@@ -81,6 +83,10 @@ export class ApiService {
     if (animalId !== null) params.push(`animal_id=${animalId}`);
     if (matchScore !== null) params.push(`match_score=${matchScore}`);
     return this.http.post<any>(`${this.baseUrl}/observations?${params.join('&')}`, formData);
+  }
+
+  deleteObservation(id: number): Observable<{ ok: boolean; deleted_id: number }> {
+    return this.http.delete<{ ok: boolean; deleted_id: number }>(`${this.baseUrl}/observations/${id}`);
   }
 
   getBadges(): Observable<Badge[]> {

@@ -22,7 +22,7 @@ import { ThemeService } from './services/theme.service';
                   [routerLinkActiveOptions]="{ exact: true }"
                   class="text-gray-700 dark:text-gray-300 hover:text-emerald-600 px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
                 >
-                  Codex
+                  📖 Codex
                 </a>
                 <a 
                   routerLink="/map" 

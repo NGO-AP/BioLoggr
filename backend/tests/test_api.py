@@ -1,11 +1,21 @@
+import io
 import os
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 from sqlmodel import SQLModel, create_engine, Session
 from sqlmodel.pool import StaticPool
 
 from backend.main import app, get_session
 from backend.models import Animal, Observation, Badge
+
+
+def _make_jpeg_bytes(width: int = 100, height: int = 100) -> bytes:
+    """Genereer een geldig JPEG-plaatje in geheugen (voor tests)."""
+    img = Image.new("RGB", (width, height), color=(120, 180, 60))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG")
+    return buf.getvalue()
 
 @pytest.fixture(name="session")
 def session_fixture():
@@ -67,16 +77,16 @@ def test_get_badges(client: TestClient):
     assert data[0]["name"] == "Eerste Waarneming"
 
 def test_create_observation(client: TestClient, tmp_path):
-    # Create a dummy image file
+    jpeg_bytes = _make_jpeg_bytes()
     dummy_img = tmp_path / "test_fox.jpg"
-    dummy_img.write_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF") # Minimal JPEG header bytes
+    dummy_img.write_bytes(jpeg_bytes)
 
     with open(dummy_img, "rb") as f:
         response = client.post(
             "/api/observations?latitude=51.2194&longitude=4.4025&notes=Test+observation",
             files={"file": ("test_fox.jpg", f, "image/jpeg")}
         )
-    
+
     assert response.status_code == 200
     data = response.json()
     assert "observation" in data
@@ -85,3 +95,63 @@ def test_create_observation(client: TestClient, tmp_path):
     assert data["observation"]["longitude"] == 4.4025
     assert data["observation"]["confidence"] > 0.0
     assert data["animal"]["scientific_name"] == "Vulpes vulpes"
+    # Controleer dat afbeeldingspaden zijn opgeslagen
+    assert data["observation"]["image_path"].endswith(".webp")
+    assert data["observation"]["thumbnail_path"] is not None
+    assert data["observation"]["thumbnail_path"].endswith("_thumb.webp")
+
+
+def test_get_animal_detail_with_all_observations(client: TestClient, session: Session, tmp_path):
+    # Maak een observatie aan en controleer dat het detail-endpoint all_observations teruggeeft
+    animal = session.exec(
+        __import__("sqlmodel", fromlist=["select"]).select(Animal).where(Animal.scientific_name == "Vulpes vulpes")
+    ).first()
+    obs = Observation(
+        animal_id=animal.id,
+        image_path="/uploads/test.webp",
+        thumbnail_path="/uploads/test_thumb.webp",
+        confidence=0.9,
+        is_wild=True,
+    )
+    session.add(obs)
+    session.commit()
+
+    response = client.get(f"/api/codex/{animal.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert "all_observations" in data
+    assert len(data["all_observations"]) >= 1
+    assert data["all_observations"][0]["thumbnail_path"] == "/uploads/test_thumb.webp"
+
+
+def test_delete_observation(client: TestClient, session: Session):
+    animal = session.exec(
+        __import__("sqlmodel", fromlist=["select"]).select(Animal).where(Animal.scientific_name == "Vulpes vulpes")
+    ).first()
+    obs = Observation(
+        animal_id=animal.id,
+        image_path="/uploads/del_test.webp",
+        thumbnail_path="/uploads/del_test_thumb.webp",
+        confidence=0.85,
+        is_wild=True,
+    )
+    session.add(obs)
+    session.commit()
+    session.refresh(obs)
+    obs_id = obs.id
+
+    response = client.delete(f"/api/observations/{obs_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    assert data["deleted_id"] == obs_id
+
+    # Verifieer dat de waarneming uit de DB is verdwenen
+    from sqlmodel import select as sel
+    deleted = session.get(Observation, obs_id)
+    assert deleted is None
+
+
+def test_delete_observation_not_found(client: TestClient):
+    response = client.delete("/api/observations/99999")
+    assert response.status_code == 404

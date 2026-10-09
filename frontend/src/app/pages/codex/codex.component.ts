@@ -1,8 +1,8 @@
-import { Component, OnInit, inject, signal, computed, WritableSignal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { ApiService, Animal } from '../../services/api.service';
+import { RouterLink, ActivatedRoute } from '@angular/router';
+import { ApiService, Animal, Observation } from '../../services/api.service';
 
 @Component({
   selector: 'app-codex',
@@ -297,37 +297,53 @@ import { ApiService, Animal } from '../../services/api.service';
                     </div>
                   }
 
-                  <!-- Meest recente waarneming -->
-                  @if (animal.latest_observation; as obs) {
-                    <div class="bg-emerald-50/60 dark:bg-emerald-900/20 rounded-2xl p-6 border border-emerald-200/80 dark:border-emerald-800/50 space-y-4">
+                  <!-- Waarnemingen tijdlijn -->
+                  @if (detailObservations().length > 0) {
+                    <div class="space-y-3">
                       <h4 class="text-sm font-bold text-emerald-900 dark:text-emerald-400 flex items-center gap-2">
-                        <span>📸</span> Jouw Laatste Waarneming
+                        <span>📸</span> Alle Waarnemingen
+                        <span class="ml-1 text-xs font-normal text-gray-400">({{ detailObservations().length }})</span>
                       </h4>
-                      <div class="flex flex-col sm:flex-row gap-4 items-center">
-                        <img [src]="'http://localhost:8000' + obs.image_path" alt="Waarneming foto" class="w-28 h-28 rounded-xl object-cover shadow-sm border border-emerald-200" />
-                          <div class="space-y-1 text-sm text-emerald-900 dark:text-emerald-300 flex-1">
-                          @if (obs.is_wild) {
-                            <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400 mb-1">🌿 Gespot in het wild</span>
-                          } @else {
-                            <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-400 mb-1">🏛️ Gespot in dierentuin/opvang</span>
-                          }
-                          <p><strong>Datum:</strong> {{ obs.timestamp | date:'medium' }}</p>
-                          @if (obs.latitude != null && obs.longitude != null) {
-                            <p class="tabular-nums"><strong>Coördinaten:</strong> {{ obs.latitude | number:'1.4-4' }}° N, {{ obs.longitude | number:'1.4-4' }}° O</p>
-                          }
-                          <p><strong>Match score:</strong> {{ (obs.confidence * 100).toFixed(1) }}%</p>
-                          @if (obs.notes) {
-                            <p><strong>Notities:</strong> {{ obs.notes }}</p>
-                          }
-                          @if (obs.latitude != null && obs.longitude != null) {
-                            <a
-                              routerLink="/map"
-                              [queryParams]="{ lat: obs.latitude, lng: obs.longitude }"
-                              class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-900 transition-colors pt-1"
-                            >🗺️ Bekijk locatie op kaart →</a>
-                          }
+                      @for (obs of detailObservations(); track obs.id) {
+                        <div class="bg-emerald-50/60 dark:bg-emerald-900/20 rounded-2xl p-4 border border-emerald-200/80 dark:border-emerald-800/50">
+                          <div class="flex flex-col sm:flex-row gap-4 items-start">
+                            <img
+                              [src]="'http://localhost:8000' + (obs.thumbnail_path ?? obs.image_path)"
+                              alt="Waarneming foto"
+                              class="w-24 h-24 rounded-xl object-cover shadow-sm border border-emerald-200 shrink-0"
+                            />
+                            <div class="space-y-1 text-sm text-emerald-900 dark:text-emerald-300 flex-1 min-w-0">
+                              @if (obs.is_wild) {
+                                <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400">🌿 In het wild</span>
+                              } @else {
+                                <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-400">🏛️ Dierentuin/opvang</span>
+                              }
+                              <p><strong>Datum:</strong> {{ obs.timestamp | date:'medium' }}</p>
+                              @if (obs.latitude != null && obs.longitude != null) {
+                                <p class="tabular-nums"><strong>Coördinaten:</strong> {{ obs.latitude | number:'1.4-4' }}° N, {{ obs.longitude | number:'1.4-4' }}° O</p>
+                              }
+                              <p><strong>Match score:</strong> {{ (obs.confidence * 100).toFixed(1) }}%</p>
+                              @if (obs.notes) {
+                                <p class="truncate"><strong>Notities:</strong> {{ obs.notes }}</p>
+                              }
+                              <div class="flex items-center gap-3 pt-1">
+                                @if (obs.latitude != null && obs.longitude != null) {
+                                  <a
+                                    routerLink="/map"
+                                    [queryParams]="{ lat: obs.latitude, lng: obs.longitude }"
+                                    class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-900 transition-colors"
+                                  >🗺️ Bekijk op kaart →</a>
+                                }
+                                <button
+                                  type="button"
+                                  (click)="confirmDeleteObservation(obs.id, animal.id)"
+                                  class="inline-flex items-center gap-1 text-xs font-semibold text-red-500 hover:text-red-700 transition-colors ml-auto cursor-pointer"
+                                >🗑️ Verwijderen</button>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      }
                     </div>
                   }
                 } @else {
@@ -350,11 +366,14 @@ import { ApiService, Animal } from '../../services/api.service';
 })
 export class CodexComponent implements OnInit {
   private apiService = inject(ApiService);
+  private route = inject(ActivatedRoute);
 
   protected readonly animals = signal<Animal[]>([]);
   protected readonly loading = signal<boolean>(true);
   // Bijhouden welke afbeeldingen niet geladen kunnen worden → toon categorie-emoji als fallback
   protected readonly brokenImages = signal<ReadonlySet<number>>(new Set<number>());
+  /** Alle waarnemingen van het geselecteerde dier (opgehaald via detail-endpoint) */
+  protected readonly detailObservations = signal<Observation[]>([]);
   
   protected readonly categories = ['Alle klassen', 'Zoogdieren', 'Vogels', 'Insecten', 'Reptielen & Amfibieën'];
   protected readonly selectedCategory = signal<string>('Alle klassen');
@@ -378,10 +397,18 @@ export class CodexComponent implements OnInit {
   protected readonly selectedAnimal = signal<Animal | null>(null);
 
   ngOnInit() {
+    const openId = parseInt(this.route.snapshot.queryParamMap.get('open') ?? '', 10);
+
     this.apiService.getCodex().subscribe({
       next: (data) => {
-        this.animals.set(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : [];
+        this.animals.set(list);
         this.loading.set(false);
+        // Open de dierkaart direct als ?open=<id> meegegeven is
+        if (!isNaN(openId)) {
+          const target = list.find(a => a.id === openId);
+          if (target) this.openDetail(target);
+        }
       },
       error: (err) => {
         console.error('Fout bij ophalen codex:', err);
@@ -509,9 +536,41 @@ export class CodexComponent implements OnInit {
 
   protected openDetail(animal: Animal): void {
     this.selectedAnimal.set(animal);
+    this.detailObservations.set([]);
+    // Haal alle waarnemingen + verse data op via het detail-endpoint
+    this.apiService.getAnimalDetail(animal.id).subscribe({
+      next: (detail) => {
+        this.detailObservations.set(detail.all_observations ?? []);
+        // Update ook het dier in de grid (latest_observation kan veranderd zijn)
+        this.selectedAnimal.set({ ...detail });
+      },
+    });
   }
 
   protected closeDetail(): void {
     this.selectedAnimal.set(null);
+    this.detailObservations.set([]);
+  }
+
+  protected confirmDeleteObservation(obsId: number, animalId: number): void {
+    if (!confirm('Weet je zeker dat je deze waarneming wilt verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
+    this.apiService.deleteObservation(obsId).subscribe({
+      next: () => {
+        // Verwijder lokaal uit de tijdlijn
+        const remaining = this.detailObservations().filter(o => o.id !== obsId);
+        this.detailObservations.set(remaining);
+
+        // Update het dier in de animals-lijst en in de selectedAnimal
+        const latestObs = remaining[0] ?? null;
+        this.animals.update(list =>
+          list.map(a => a.id === animalId ? { ...a, latest_observation: latestObs } : a)
+        );
+        const current = this.selectedAnimal();
+        if (current && current.id === animalId) {
+          this.selectedAnimal.set({ ...current, latest_observation: latestObs, all_observations: remaining });
+        }
+      },
+      error: () => alert('Verwijderen mislukt. Probeer opnieuw.'),
+    });
   }
 }

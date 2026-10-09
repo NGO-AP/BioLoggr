@@ -20,13 +20,19 @@ def init_db():
             if columns and "category" not in columns:
                 os.remove(db_path)
                 return
-            # Migrate: add is_wild if missing
-            cursor.execute("PRAGMA table_info(observation);")
-            obs_cols = [col[1] for col in cursor.fetchall()]
-            if obs_cols and "is_wild" not in obs_cols:
-                cursor.execute("ALTER TABLE observation ADD COLUMN is_wild BOOLEAN NOT NULL DEFAULT 1")
-                conn.commit()
             conn.close()
+            # Migrate observation columns if missing
+            conn2 = sqlite3.connect(db_path)
+            cur2 = conn2.cursor()
+            cur2.execute("PRAGMA table_info(observation);")
+            obs_cols = [col[1] for col in cur2.fetchall()]
+            if obs_cols and "is_wild" not in obs_cols:
+                cur2.execute("ALTER TABLE observation ADD COLUMN is_wild BOOLEAN NOT NULL DEFAULT 1")
+                conn2.commit()
+            if obs_cols and "thumbnail_path" not in obs_cols:
+                cur2.execute("ALTER TABLE observation ADD COLUMN thumbnail_path TEXT")
+                conn2.commit()
+            conn2.close()
         except Exception:
             pass
 

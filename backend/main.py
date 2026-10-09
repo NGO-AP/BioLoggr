@@ -1,3 +1,4 @@
+import io
 import os
 import shutil
 from datetime import datetime, timezone
@@ -6,6 +7,7 @@ from fastapi import FastAPI, Depends, File, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session, select
+from PIL import Image, ImageOps
 
 from backend.database import init_db, get_session
 from backend.models import Animal, Observation, Badge
@@ -25,6 +27,49 @@ app.add_middleware(
 UPLOAD_DIR = "backend/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs("backend/static", exist_ok=True)
+
+_WEBP_QUALITY = 82
+_MAX_SIZE = (1600, 1200)
+_THUMB_SIZE = (300, 300)
+
+
+def _compress_image(image_bytes: bytes, filename_base: str) -> tuple[str, str, str, str]:
+    """Compress image to WebP and generate square thumbnail.
+
+    Returns:
+        (main_fs_path, thumb_fs_path, main_url, thumb_url)
+    """
+    img = Image.open(io.BytesIO(image_bytes))
+    img = img.convert("RGB")
+
+    # Resize main image while keeping aspect ratio
+    img.thumbnail(_MAX_SIZE, Image.LANCZOS)
+    main_name = filename_base + ".webp"
+    main_fs = os.path.join(UPLOAD_DIR, main_name)
+    img.save(main_fs, "WEBP", quality=_WEBP_QUALITY)
+
+    # Square thumbnail via centre-crop
+    thumb = ImageOps.fit(img, _THUMB_SIZE, Image.LANCZOS)
+    thumb_name = filename_base + "_thumb.webp"
+    thumb_fs = os.path.join(UPLOAD_DIR, thumb_name)
+    thumb.save(thumb_fs, "WEBP", quality=_WEBP_QUALITY)
+
+    return main_fs, thumb_fs, f"/uploads/{main_name}", f"/uploads/{thumb_name}"
+
+
+def _obs_to_dict(obs: "Observation") -> dict:
+    return {
+        "id": obs.id,
+        "animal_id": obs.animal_id,
+        "timestamp": obs.timestamp.isoformat() if obs.timestamp else None,
+        "latitude": obs.latitude,
+        "longitude": obs.longitude,
+        "image_path": obs.image_path,
+        "thumbnail_path": obs.thumbnail_path,
+        "notes": obs.notes,
+        "confidence": obs.confidence,
+        "is_wild": obs.is_wild,
+    }
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
@@ -205,16 +250,7 @@ def get_codex(session: Session = Depends(get_session)):
             "description": animal.description,
             "image_url": animal.image_url,
             "extra_info": animal.extra_info,
-            "latest_observation": {
-                "id": latest_obs.id,
-                "timestamp": latest_obs.timestamp.isoformat(),
-                "latitude": latest_obs.latitude,
-                "longitude": latest_obs.longitude,
-                "image_path": latest_obs.image_path,
-                "notes": latest_obs.notes,
-                "confidence": latest_obs.confidence,
-                "is_wild": latest_obs.is_wild
-            } if latest_obs else None
+            "latest_observation": _obs_to_dict(latest_obs) if latest_obs else None,
         })
     return result
 
@@ -223,10 +259,15 @@ def get_animal_detail(animal_id: int, session: Session = Depends(get_session)):
     animal = session.get(Animal, animal_id)
     if not animal:
         raise HTTPException(status_code=404, detail="Animal not found")
-    
-    statement = select(Observation).where(Observation.animal_id == animal.id).order_by(Observation.timestamp.desc())
-    latest_obs = session.exec(statement).first()
-    
+
+    all_obs = session.exec(
+        select(Observation)
+        .where(Observation.animal_id == animal.id)
+        .order_by(Observation.timestamp.desc())
+    ).all()
+
+    latest_obs = all_obs[0] if all_obs else None
+
     return {
         "id": animal.id,
         "scientific_name": animal.scientific_name,
@@ -236,15 +277,8 @@ def get_animal_detail(animal_id: int, session: Session = Depends(get_session)):
         "description": animal.description,
         "image_url": animal.image_url,
         "extra_info": animal.extra_info,
-        "latest_observation": {
-            "id": latest_obs.id,
-            "timestamp": latest_obs.timestamp.isoformat(),
-            "latitude": latest_obs.latitude,
-            "longitude": latest_obs.longitude,
-            "image_path": latest_obs.image_path,
-            "notes": latest_obs.notes,
-            "confidence": latest_obs.confidence
-        } if latest_obs else None
+        "latest_observation": _obs_to_dict(latest_obs) if latest_obs else None,
+        "all_observations": [_obs_to_dict(o) for o in all_obs],
     }
 
 @app.post("/api/observations")
@@ -258,13 +292,16 @@ async def create_observation(
     match_score: Optional[float] = Query(None, description="Betrouwbaarheidsscore (0.0-1.0) zoals getoond bij identificatie"),
     session: Session = Depends(get_session)
 ):
-    # Bestand opslaan
-    safe_name = (file.filename or "upload.jpg").replace(" ", "_")
-    saved_filename = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{safe_name}"
-    file_path = os.path.join(UPLOAD_DIR, saved_filename)
+    # Bestand lezen + comprimeren naar WebP
     image_bytes = await file.read()
-    with open(file_path, "wb") as f:
-        f.write(image_bytes)
+    original_name = (file.filename or "upload.jpg").replace(" ", "_")
+    name_no_ext = os.path.splitext(original_name)[0]
+    filename_base = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{name_no_ext}"
+    try:
+        main_fs, thumb_fs, image_url, thumbnail_url = _compress_image(image_bytes, filename_base)
+    except Exception:
+        raise HTTPException(status_code=422, detail="Afbeelding kon niet worden verwerkt. Zorg dat je een geldig JPEG/PNG/WebP-bestand uploadt.")
+    file_path = main_fs
 
     # Soort bepalen: gebruiker-keuze > BioCLIP > mock-fallback
     if animal_id is not None:
@@ -302,7 +339,8 @@ async def create_observation(
         animal_id=animal.id,
         latitude=latitude,
         longitude=longitude,
-        image_path=f"/uploads/{saved_filename}",
+        image_path=image_url,
+        thumbnail_path=thumbnail_url,
         confidence=confidence,
         notes=notes,
         is_wild=is_wild
@@ -323,17 +361,7 @@ async def create_observation(
             unlocked_badges.append(badge)
 
     return {
-        "observation": {
-            "id": observation.id,
-            "animal_id": observation.animal_id,
-            "latitude": observation.latitude,
-            "longitude": observation.longitude,
-            "image_path": observation.image_path,
-            "timestamp": observation.timestamp.isoformat() if observation.timestamp else None,
-            "confidence": observation.confidence,
-            "notes": observation.notes,
-            "is_wild": observation.is_wild
-        },
+        "observation": _obs_to_dict(observation),
         "animal": {
             "id": animal.id,
             "scientific_name": animal.scientific_name,
@@ -351,6 +379,26 @@ async def create_observation(
 def get_observations(session: Session = Depends(get_session)):
     observations = session.exec(select(Observation)).all()
     return observations
+
+
+@app.delete("/api/observations/{observation_id}")
+def delete_observation(observation_id: int, session: Session = Depends(get_session)):
+    obs = session.get(Observation, observation_id)
+    if not obs:
+        raise HTTPException(status_code=404, detail="Waarneming niet gevonden")
+
+    # Verwijder gekoppelde bestanden van de schijf
+    for url_path in [obs.image_path, obs.thumbnail_path]:
+        if url_path:
+            fs_path = os.path.join(UPLOAD_DIR, os.path.basename(url_path))
+            if os.path.exists(fs_path):
+                os.remove(fs_path)
+
+    session.delete(obs)
+    session.commit()
+
+    return {"ok": True, "deleted_id": observation_id}
+
 
 @app.get("/api/badges", response_model=List[Badge])
 def get_badges(session: Session = Depends(get_session)):
