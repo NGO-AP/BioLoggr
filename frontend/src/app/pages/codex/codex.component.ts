@@ -112,32 +112,15 @@ import { ApiService, Animal } from '../../services/api.service';
                     }
                   </div>
 
-                  <div class="p-5 flex-1 flex flex-col justify-between">
-                    <div>
+                  <div class="p-4 flex flex-col gap-1">
+                    <div class="flex items-center justify-between text-xs text-gray-400">
+                      <span>{{ animal.category }}</span>
                       @if (animal.latest_observation) {
-                        <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
-                          <span>{{ animal.category }}</span>
-                          <span class="text-emerald-600 font-semibold">✓ Gespot</span>
-                        </div>
-                      }
-                      <h3 class="text-xl font-bold text-gray-900 group-hover:text-emerald-600 transition-colors">{{ animal.dutch_name }}</h3>
-                      <p class="text-xs italic text-gray-500 mb-3">{{ animal.scientific_name }}</p>
-                      
-                      @if (animal.latest_observation) {
-                        <p class="text-gray-600 text-sm line-clamp-2 mb-4">{{ animal.description }}</p>
+                        <span class="text-emerald-600 font-semibold">✓ Gespot</span>
                       }
                     </div>
-
-                    @if (animal.latest_observation && animal.extra_info) {
-                      <div class="border-t border-gray-100 pt-3 mt-auto text-xs text-gray-500 space-y-1">
-                        @if (animal.extra_info['habitat']) {
-                          <div class="truncate"><span class="font-semibold text-gray-700">Habitat:</span> {{ animal.extra_info['habitat'] }}</div>
-                        }
-                        @if (animal.extra_info['diet']) {
-                          <div class="truncate"><span class="font-semibold text-gray-700">Dieet:</span> {{ animal.extra_info['diet'] }}</div>
-                        }
-                      </div>
-                    }
+                    <h3 class="text-lg font-bold text-gray-900 group-hover:text-emerald-600 transition-colors leading-tight">{{ animal.dutch_name }}</h3>
+                    <p class="text-xs italic text-gray-500">{{ animal.scientific_name }}</p>
                   </div>
                 </div>
               } @empty {
