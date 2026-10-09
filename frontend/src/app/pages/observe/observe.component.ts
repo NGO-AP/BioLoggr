@@ -13,11 +13,17 @@ interface ObservationResult {
 
 type LocationSource = 'exif' | 'browser' | 'default' | 'manual';
 
-// Fix Leaflet's default marker icons — broken in Angular/esbuild bundler builds
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+// SVG-pin als divIcon — geen externe afbeeldingen nodig, werkt altijd in Angular/esbuild
+const PIN_ICON = L.divIcon({
+  className: '',
+  html: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42">
+    <path d="M16 0C7.163 0 0 7.163 0 16c0 10 16 26 16 26S32 26 32 16C32 7.163 24.837 0 16 0z"
+      fill="#059669" stroke="#fff" stroke-width="2"/>
+    <circle cx="16" cy="16" r="6" fill="#fff"/>
+  </svg>`,
+  iconSize: [32, 42],
+  iconAnchor: [16, 42],
+  popupAnchor: [0, -42],
 });
 
 const DEFAULT_LAT = 51.2;
@@ -166,6 +172,59 @@ const DEFAULT_LON = 4.4;
           <div class="space-y-3">
             <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">📍 Locatie van waarneming</label>
 
+            <!-- Plaatsnaam zoeken -->
+            <div class="relative">
+              <div class="flex gap-2">
+                <div class="relative flex-1">
+                  <input
+                    type="text"
+                    [value]="placeQuery()"
+                    (input)="onPlaceQueryChange($event)"
+                    (keydown.enter)="searchPlace()"
+                    placeholder="Zoek een plaats, adres of regio..."
+                    class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none pr-8"
+                  />
+                  @if (placeQuery()) {
+                    <button type="button" (click)="clearPlaceSearch()" class="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer text-xs">✕</button>
+                  }
+                </div>
+                <button
+                  type="button"
+                  (click)="searchPlace()"
+                  [disabled]="isSearching() || !placeQuery().trim()"
+                  class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed shrink-0"
+                >
+                  @if (isSearching()) {
+                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  } @else {
+                    🔍
+                  }
+                </button>
+              </div>
+
+              <!-- Zoekresultaten dropdown -->
+              @if (placeResults().length > 0) {
+                <div class="absolute z-[1000] top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden">
+                  @for (result of placeResults(); track result.place_id) {
+                    <button
+                      type="button"
+                      (click)="selectPlace(result)"
+                      class="w-full text-left px-4 py-2.5 text-sm hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border-b border-gray-100 dark:border-gray-700 last:border-0 transition-colors cursor-pointer"
+                    >
+                      <span class="font-medium text-gray-900 dark:text-gray-100">{{ result.display_name.split(',')[0] }}</span>
+                      <span class="block text-xs text-gray-500 dark:text-gray-400 truncate">{{ result.display_name }}</span>
+                    </button>
+                  }
+                </div>
+              }
+              @if (placeError()) {
+                <p class="text-xs text-red-500 mt-1">{{ placeError() }}</p>
+              }
+            </div>
+
             @switch (locationSource()) {
               @case ('exif') {
                 <div class="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-lg text-sm text-emerald-800 dark:text-emerald-400">
@@ -259,6 +318,12 @@ export class ObserveComponent implements OnDestroy {
   protected readonly exifLat = signal<number | null>(null);
   protected readonly exifLon = signal<number | null>(null);
 
+  // Plaatsnaam zoeken
+  protected readonly placeQuery = signal<string>('');
+  protected readonly placeResults = signal<any[]>([]);
+  protected readonly placeError = signal<string | null>(null);
+  protected readonly isSearching = signal<boolean>(false);
+
   constructor() {
     afterEveryRender(() => {
       if (this.result()) {
@@ -294,7 +359,7 @@ export class ObserveComponent implements OnDestroy {
       maxZoom: 19,
     }).addTo(this.map);
 
-    this.marker = L.marker([this.lat(), this.lon()], { draggable: true }).addTo(this.map);
+    this.marker = L.marker([this.lat(), this.lon()], { draggable: true, icon: PIN_ICON }).addTo(this.map);
 
     this.marker.on('dragend', () => {
       const pos = this.marker!.getLatLng();
@@ -378,6 +443,58 @@ export class ObserveComponent implements OnDestroy {
     this.locationSource.set('default');
     this.exifLat.set(null);
     this.exifLon.set(null);
+    this.placeQuery.set('');
+    this.placeResults.set([]);
+    this.placeError.set(null);
+  }
+
+  // ── Plaatsnaam zoeken ────────────────────────────────────────────────────────
+
+  protected onPlaceQueryChange(event: Event): void {
+    this.placeQuery.set((event.target as HTMLInputElement).value);
+    this.placeResults.set([]);
+    this.placeError.set(null);
+  }
+
+  protected async searchPlace(): Promise<void> {
+    const q = this.placeQuery().trim();
+    if (!q) return;
+
+    this.isSearching.set(true);
+    this.placeResults.set([]);
+    this.placeError.set(null);
+
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&accept-language=nl`;
+      const res = await fetch(url, { headers: { 'Accept-Language': 'nl' } });
+      const data = await res.json();
+      if (data.length === 0) {
+        this.placeError.set('Geen resultaten gevonden. Probeer een andere zoekterm.');
+      } else {
+        this.placeResults.set(data);
+      }
+    } catch {
+      this.placeError.set('Kon niet zoeken. Controleer je internetverbinding.');
+    } finally {
+      this.isSearching.set(false);
+    }
+  }
+
+  protected selectPlace(result: any): void {
+    const lat = parseFloat(result.lat);
+    const lon = parseFloat(result.lon);
+    this.lat.set(lat);
+    this.lon.set(lon);
+    this.locationSource.set('manual');
+    this.updateMapLocation(lat, lon);
+    this.placeResults.set([]);
+    this.placeQuery.set(result.display_name.split(',')[0]);
+  }
+
+  protected clearPlaceSearch(): void {
+    this.placeQuery.set('');
+    this.placeResults.set([]);
+    this.placeError.set(null);
   }
 
   protected resetToExifLocation(): void {
