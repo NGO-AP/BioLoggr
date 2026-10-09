@@ -1,6 +1,6 @@
 import io
 import os
-import shutil
+import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import FastAPI, Depends, File, UploadFile, HTTPException, Query
@@ -17,12 +17,23 @@ from backend.services import badge_service
 
 app = FastAPI(title="BioLoggr API", version="1.0.0")
 
+# CORS: configureerbaar via omgevingsvariabele voor productie.
+# Standaard localhost-origins voor lokale ontwikkeling.
+_ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:4200,http://127.0.0.1:4200",
+    ).split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Content-Type", "Accept"],
 )
 
 UPLOAD_DIR = "backend/uploads"
@@ -32,6 +43,38 @@ os.makedirs("backend/static", exist_ok=True)
 _WEBP_QUALITY = 82
 _MAX_SIZE = (1600, 1200)
 _THUMB_SIZE = (300, 300)
+
+
+_ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tiff"}
+
+
+def _safe_filename_base(original_filename: str | None) -> str:
+    """Genereer een veilige bestandsnaam-basis met UUID.
+
+    De originele bestandsnaam van de gebruiker wordt NOOIT direct gebruikt
+    om directory traversal (../../) en injectie-aanvallen te voorkomen.
+    """
+    ext = ""
+    if original_filename:
+        _, raw_ext = os.path.splitext(original_filename)
+        if raw_ext.lower() in _ALLOWED_IMAGE_EXTENSIONS:
+            ext = raw_ext.lower()
+    return uuid.uuid4().hex + (ext or ".jpg")
+
+
+def _validate_image(image_bytes: bytes) -> None:
+    """Controleer via Pillow of de bytes een geldig afbeeldingsbestand vormen.
+
+    Gooit een HTTPException als het bestand ongeldig of corrupt is.
+    """
+    try:
+        probe = Image.open(io.BytesIO(image_bytes))
+        probe.verify()  # Detecteert corrupte of nep-bestanden
+    except Exception:
+        raise HTTPException(
+            status_code=422,
+            detail="Geen geldig afbeeldingsbestand. Zorg dat je een JPEG, PNG of WebP uploadt.",
+        )
 
 
 def _compress_image(image_bytes: bytes, filename_base: str) -> tuple[str, str, str, str]:
@@ -293,17 +336,21 @@ async def create_observation(
     match_score: Optional[float] = Query(None, description="Betrouwbaarheidsscore (0.0-1.0) zoals getoond bij identificatie"),
     session: Session = Depends(get_session)
 ):
-    # Bestand lezen + comprimeren naar WebP
+    # Bestand lezen
     image_bytes = await file.read()
-    original_name = (file.filename or "upload.jpg").replace(" ", "_")
-    name_no_ext = os.path.splitext(original_name)[0]
-    filename_base = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{name_no_ext}"
+
+    # Stap 1: Valideer dat het daadwerkelijk een afbeelding is (voor verwerking)
+    _validate_image(image_bytes)
+
+    # Stap 2: Sla op met veilige, UUID-gebaseerde bestandsnaam (geen gebruikersinput)
+    safe_base = _safe_filename_base(file.filename)
+    filename_base = os.path.splitext(safe_base)[0]
     try:
         main_fs, thumb_fs, image_url, thumbnail_url = _compress_image(image_bytes, filename_base)
+    except HTTPException:
+        raise
     except Exception:
-        raise HTTPException(status_code=422, detail="Afbeelding kon niet worden verwerkt. Zorg dat je een geldig JPEG/PNG/WebP-bestand uploadt.")
-    file_path = main_fs
-
+        raise HTTPException(status_code=422, detail="Afbeelding kon niet worden verwerkt.")
     # Soort bepalen: gebruiker-keuze > BioCLIP > mock-fallback
     if animal_id is not None:
         animal = session.get(Animal, animal_id)
@@ -329,7 +376,7 @@ async def create_observation(
             confidence = 0.5
     else:
         # Mock-fallback als BioCLIP nog niet klaar is
-        ai_result = mock_identify_animal(file_path)
+        ai_result = mock_identify_animal(image_url)
         sci_name = ai_result["scientific_name"]
         confidence = ai_result["confidence"]
         animal = session.exec(select(Animal).where(Animal.scientific_name == sci_name)).first()
