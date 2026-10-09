@@ -85,13 +85,17 @@ import { ApiService, Animal } from '../../services/api.service';
                   class="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-all border border-gray-200 flex flex-col cursor-pointer group"
                 >
                   <div class="h-48 bg-gray-100 relative overflow-hidden">
-                    @if (animal.image_url) {
-                      <img 
-                        [src]="'http://localhost:8000' + animal.image_url" 
-                        [alt]="animal.dutch_name" 
+                    @if (animal.latest_observation) {
+                      <img
+                        [src]="'http://localhost:8000' + animal.latest_observation.image_path"
+                        [alt]="animal.dutch_name"
                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        [class.brightness-0]="!animal.latest_observation"
-                        [class.opacity-30]="!animal.latest_observation"
+                      >
+                    } @else if (animal.image_url) {
+                      <img
+                        [src]="'http://localhost:8000' + animal.image_url"
+                        [alt]="animal.dutch_name"
+                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 brightness-0 opacity-30"
                       >
                     } @else {
                       <div class="w-full h-full flex items-center justify-center text-gray-400">Geen afbeelding</div>
@@ -235,6 +239,9 @@ import { ApiService, Animal } from '../../services/api.service';
                         <img [src]="'http://localhost:8000' + obs.image_path" alt="Waarneming foto" class="w-28 h-28 rounded-xl object-cover shadow-sm border border-emerald-200" />
                         <div class="space-y-1 text-sm text-emerald-900 flex-1">
                           <p><strong>Datum:</strong> {{ obs.timestamp | date:'medium' }}</p>
+                          @if (obs.latitude != null && obs.longitude != null) {
+                            <p class="tabular-nums"><strong>Coördinaten:</strong> {{ obs.latitude | number:'1.4-4' }}° N, {{ obs.longitude | number:'1.4-4' }}° O</p>
+                          }
                           <p><strong>Match score:</strong> {{ (obs.confidence * 100).toFixed(1) }}%</p>
                           @if (obs.notes) {
                             <p><strong>Notities:</strong> {{ obs.notes }}</p>

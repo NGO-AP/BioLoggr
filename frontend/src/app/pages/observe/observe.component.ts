@@ -1,13 +1,27 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, afterEveryRender, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ApiService, Animal, Observation, Badge } from '../../services/api.service';
+import * as L from 'leaflet';
+import { gps as parseGps } from 'exifr';
 
 interface ObservationResult {
   observation: Observation;
   animal: Animal;
   badges: Badge[];
 }
+
+type LocationSource = 'exif' | 'browser' | 'default' | 'manual';
+
+// Fix Leaflet's default marker icons — broken in Angular/esbuild bundler builds
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
+
+const DEFAULT_LAT = 51.2;
+const DEFAULT_LON = 4.4;
 
 @Component({
   selector: 'app-observe',
@@ -26,7 +40,7 @@ interface ObservationResult {
 
       @if (result(); as res) {
         <!-- Resultaatkaart na succesvolle analyse -->
-        <div class="bg-white rounded-2xl shadow-sm border border-emerald-200 p-6 space-y-6 animate-fadeIn">
+        <div class="bg-white rounded-2xl shadow-sm border border-emerald-200 p-6 space-y-6">
           <div class="flex items-center space-x-3 bg-emerald-50 p-4 rounded-xl border border-emerald-100">
             <span class="text-3xl">🎉</span>
             <div>
@@ -69,14 +83,14 @@ interface ObservationResult {
           }
 
           <div class="flex gap-4 pt-2">
-            <button 
-              type="button" 
+            <button
+              type="button"
               (click)="resetForm()"
               class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl shadow transition-colors cursor-pointer"
             >
               Nog een observatie doen
             </button>
-            <a 
+            <a
               routerLink="/"
               class="flex-1 text-center bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 px-4 rounded-xl transition-colors"
             >
@@ -84,10 +98,13 @@ interface ObservationResult {
             </a>
           </div>
         </div>
+
       } @else {
         <!-- Upload Formulier -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-6">
-          <div 
+
+          <!-- Foto upload zone -->
+          <div
             class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-emerald-500 transition-colors cursor-pointer relative"
             (dragover)="$event.preventDefault()"
             (drop)="onDrop($event)"
@@ -107,29 +124,72 @@ interface ObservationResult {
                 <p class="text-xs text-gray-400">PNG, JPG of WEBP</p>
               </div>
             }
-            <input 
-              #fileInput 
-              type="file" 
-              accept="image/*" 
-              class="hidden" 
-              (change)="onFileSelected($event)" 
+            <input
+              #fileInput
+              type="file"
+              accept="image/*"
+              class="hidden"
+              (change)="onFileSelected($event)"
             />
           </div>
 
+          <!-- Locatiesectie -->
+          <div class="space-y-3">
+            <label class="block text-sm font-semibold text-gray-700">📍 Locatie van waarneming</label>
+
+            @switch (locationSource()) {
+              @case ('exif') {
+                <div class="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-800">
+                  <span>✅</span> Locatie automatisch overgenomen uit foto
+                </div>
+              }
+              @case ('browser') {
+                <div class="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                  <span>📡</span> Locatie bepaald via browser-GPS
+                </div>
+              }
+              @case ('manual') {
+                <div class="flex items-center justify-between px-3 py-2 bg-violet-50 border border-violet-200 rounded-lg text-sm text-violet-800">
+                  <span class="flex items-center gap-2"><span>✏️</span> Handmatig gekozen locatie</span>
+                  @if (exifLat() !== null) {
+                    <button
+                      type="button"
+                      (click)="resetToExifLocation()"
+                      class="text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline cursor-pointer ml-3 shrink-0"
+                    >↩ Terug naar foto-locatie</button>
+                  }
+                </div>
+              }
+              @default {
+                <div class="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                  <span>ℹ️</span> Klik op de kaart of sleep de speld om de locatie te kiezen
+                </div>
+              }
+            }
+
+            <div id="observe-map" class="rounded-xl overflow-hidden border border-gray-200" style="height: 280px;"></div>
+
+            <p class="text-xs text-gray-400 text-right tabular-nums">
+              {{ lat() | number:'1.4-4' }}° N, {{ lon() | number:'1.4-4' }}° O
+            </p>
+          </div>
+
+          <!-- Notities -->
           <div class="space-y-2">
             <label for="notes" class="block text-sm font-semibold text-gray-700">Notities / Waarnemingdetails</label>
-            <textarea 
+            <textarea
               id="notes"
-              rows="3" 
+              rows="3"
               [value]="notes()"
               (input)="onNotesChange($event)"
-              placeholder="Bijv. Gezien bij de vijver in het bos, rond 14:00 uur..." 
+              placeholder="Bijv. Gezien bij de vijver in het bos, rond 14:00 uur..."
               class="w-full rounded-lg border border-gray-300 p-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
             ></textarea>
           </div>
 
-          <button 
-            type="button" 
+          <!-- Submit -->
+          <button
+            type="button"
             [disabled]="!selectedFile() || isUploading()"
             (click)="onSubmit()"
             class="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white font-semibold py-3 px-4 rounded-xl shadow transition-colors cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -149,28 +209,109 @@ interface ObservationResult {
     </div>
   `
 })
-export class ObserveComponent {
+export class ObserveComponent implements OnDestroy {
   private apiService = inject(ApiService);
 
+  // Leaflet instances — not reactive, managed manually
+  private map: L.Map | null = null;
+  private marker: L.Marker | null = null;
+  private mapInitialized = false;
+
+  // Form state
   protected readonly selectedFile = signal<File | null>(null);
   protected readonly previewUrl = signal<string | null>(null);
   protected readonly notes = signal<string>('');
-  
   protected readonly isUploading = signal<boolean>(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly result = signal<ObservationResult | null>(null);
 
+  // Location state
+  protected readonly lat = signal<number>(DEFAULT_LAT);
+  protected readonly lon = signal<number>(DEFAULT_LON);
+  protected readonly locationSource = signal<LocationSource>('default');
+  // Bewaar EXIF-coördinaten zodat de gebruiker na handmatig verslepen kan terugkeren
+  protected readonly exifLat = signal<number | null>(null);
+  protected readonly exifLon = signal<number | null>(null);
+
+  constructor() {
+    // afterEveryRender fires after every Angular render cycle — safe for zoneless CD
+    afterEveryRender(() => {
+      if (this.result()) {
+        // Result is shown → form (and map div) removed from DOM → clean up Leaflet
+        if (this.mapInitialized) {
+          this.map?.remove();
+          this.map = null;
+          this.marker = null;
+          this.mapInitialized = false;
+        }
+      } else {
+        // Form is visible → initialize map once the div exists
+        if (!this.mapInitialized) {
+          this.initMap();
+        }
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.map?.remove();
+  }
+
+  // ── Map ─────────────────────────────────────────────────────────────────────
+
+  private initMap(): void {
+    const container = document.getElementById('observe-map');
+    if (!container) return;
+
+    this.mapInitialized = true;
+
+    this.map = L.map(container).setView([this.lat(), this.lon()], 10);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19,
+    }).addTo(this.map);
+
+    this.marker = L.marker([this.lat(), this.lon()], { draggable: true }).addTo(this.map);
+
+    // Marker sleepen → locatie updaten
+    this.marker.on('dragend', () => {
+      const pos = this.marker!.getLatLng();
+      this.lat.set(pos.lat);
+      this.lon.set(pos.lng);
+      this.locationSource.set('manual');
+    });
+
+    // Klikken op de kaart → speld verplaatsen
+    this.map.on('click', (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      this.lat.set(lat);
+      this.lon.set(lng);
+      this.marker!.setLatLng([lat, lng]);
+      this.locationSource.set('manual');
+    });
+  }
+
+  private updateMapLocation(lat: number, lon: number): void {
+    if (this.map && this.marker) {
+      this.map.setView([lat, lon], 13);
+      this.marker.setLatLng([lat, lon]);
+    }
+  }
+
+  // ── Event handlers ───────────────────────────────────────────────────────────
+
   protected onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      this.processFile(input.files[0]);
+    if (input.files?.[0]) {
+      void this.processFile(input.files[0]);
     }
   }
 
   protected onDrop(event: DragEvent): void {
     event.preventDefault();
-    if (event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]) {
-      this.processFile(event.dataTransfer.files[0]);
+    if (event.dataTransfer?.files?.[0]) {
+      void this.processFile(event.dataTransfer.files[0]);
     }
   }
 
@@ -192,11 +333,7 @@ export class ObserveComponent {
       formData.append('notes', this.notes());
     }
 
-    // Default GPS coördinaten (bijv. Utrecht / Nederland centrum)
-    const lat = 52.0907;
-    const lon = 5.1214;
-
-    this.apiService.createObservation(formData, lat, lon).subscribe({
+    this.apiService.createObservation(formData, this.lat(), this.lon()).subscribe({
       next: (res: any) => {
         this.isUploading.set(false);
         this.result.set(res);
@@ -215,14 +352,66 @@ export class ObserveComponent {
     this.notes.set('');
     this.result.set(null);
     this.errorMessage.set(null);
+    this.lat.set(DEFAULT_LAT);
+    this.lon.set(DEFAULT_LON);
+    this.locationSource.set('default');
+    this.exifLat.set(null);
+    this.exifLon.set(null);
+    // mapInitialized is already false (cleared when result was set), so afterEveryRender will re-init
   }
 
-  private processFile(file: File): void {
+  protected resetToExifLocation(): void {
+    const lat = this.exifLat();
+    const lon = this.exifLon();
+    if (lat !== null && lon !== null) {
+      this.lat.set(lat);
+      this.lon.set(lon);
+      this.locationSource.set('exif');
+      this.updateMapLocation(lat, lon);
+    }
+  }
+
+  // ── File processing ──────────────────────────────────────────────────────────
+
+  private async processFile(file: File): Promise<void> {
     this.selectedFile.set(file);
+
+    // Afbeelding preview
     const reader = new FileReader();
-    reader.onload = (e) => {
-      this.previewUrl.set(e.target?.result as string);
-    };
+    reader.onload = (e) => this.previewUrl.set(e.target?.result as string);
     reader.readAsDataURL(file);
+
+    // 1. Probeer GPS-coördinaten uit EXIF-metadata te lezen
+    try {
+      const gpsData = await parseGps(file);
+      if (gpsData?.latitude != null && gpsData?.longitude != null) {
+        this.lat.set(gpsData.latitude);
+        this.lon.set(gpsData.longitude);
+        this.exifLat.set(gpsData.latitude);
+        this.exifLon.set(gpsData.longitude);
+        this.locationSource.set('exif');
+        this.updateMapLocation(gpsData.latitude, gpsData.longitude);
+        return;
+      }
+    } catch {
+      // Geen EXIF GPS aanwezig of parsing mislukt → ga verder
+    }
+
+    // 2. Fallback: browser geolocation
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          this.lat.set(pos.coords.latitude);
+          this.lon.set(pos.coords.longitude);
+          this.locationSource.set('browser');
+          this.updateMapLocation(pos.coords.latitude, pos.coords.longitude);
+        },
+        () => {
+          // Toestemming geweigerd of onbeschikbaar → standaardlocatie behouden
+          this.locationSource.set('default');
+        },
+        { timeout: 5000 }
+      );
+    }
   }
 }

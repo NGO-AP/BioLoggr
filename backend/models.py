@@ -18,8 +18,8 @@ class Animal(SQLModel, table=True):
 class Observation(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     animal_id: int = Field(foreign_key="animal.id")
-    latitude: float
-    longitude: float
+    latitude: Optional[float] = Field(default=None)
+    longitude: Optional[float] = Field(default=None)
     image_path: str
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
