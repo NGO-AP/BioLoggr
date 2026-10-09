@@ -13,6 +13,7 @@ from backend.database import init_db, get_session
 from backend.models import Animal, Observation, Badge
 from backend.seed import seed_species, seed_badges
 from backend.services.bioclip_service import bioclip
+from backend.services import badge_service
 
 app = FastAPI(title="BioLoggr API", version="1.0.0")
 
@@ -346,19 +347,17 @@ async def create_observation(
         is_wild=is_wild
     )
     
+    # Compute unlocked badges BEFORE saving the new observation
+    before_ids = badge_service.evaluate_unlocked_badge_ids(session)
+
     session.add(observation)
     session.commit()
     session.refresh(observation)
-    
-    badges = session.exec(select(Badge)).all()
-    unlocked_badges = []
-    for badge in badges:
-        if badge.name == "Eerste Waarneming" and not badge.unlocked_at:
-            badge.unlocked_at = datetime.now(timezone.utc)
-            session.add(badge)
-            session.commit()
-            session.refresh(badge)
-            unlocked_badges.append(badge)
+
+    # Compute unlocked badges AFTER saving and detect newly unlocked
+    after_ids = badge_service.evaluate_unlocked_badge_ids(session)
+    new_ids = after_ids - before_ids
+    newly_unlocked = badge_service.record_new_unlocks(session, new_ids)
 
     return {
         "observation": _obs_to_dict(observation),
@@ -372,7 +371,7 @@ async def create_observation(
             "image_url": animal.image_url,
             "extra_info": animal.extra_info
         },
-        "badges": unlocked_badges
+        "newly_unlocked_badges": newly_unlocked,
     }
 
 @app.get("/api/observations", response_model=List[Observation])
@@ -400,7 +399,11 @@ def delete_observation(observation_id: int, session: Session = Depends(get_sessi
     return {"ok": True, "deleted_id": observation_id}
 
 
-@app.get("/api/badges", response_model=List[Badge])
+@app.get("/api/badges")
 def get_badges(session: Session = Depends(get_session)):
-    badges = session.exec(select(Badge)).all()
-    return badges
+    return badge_service.get_badges_with_progress(session)
+
+
+@app.get("/api/stats")
+def get_stats(session: Session = Depends(get_session)):
+    return badge_service.get_stats(session)

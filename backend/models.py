@@ -38,3 +38,12 @@ class Badge(SQLModel, table=True):
     description: str
     icon: str
     unlocked_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True)))
+
+class BadgeUnlock(SQLModel, table=True):
+    """Persistent timestamp registry for the dynamic badge system."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    badge_id: str = Field(index=True, unique=True)
+    unlocked_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True))
+    )
