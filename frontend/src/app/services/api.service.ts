@@ -5,8 +5,8 @@ import { Observable } from 'rxjs';
 export interface Observation {
   id: number;
   animal_id: number;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   image_path: string;
   timestamp: string;
   confidence: number;

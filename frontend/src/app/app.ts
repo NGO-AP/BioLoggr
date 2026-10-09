@@ -24,6 +24,13 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
                   Codex
                 </a>
                 <a 
+                  routerLink="/map" 
+                  routerLinkActive="bg-emerald-50 text-emerald-600"
+                  class="text-gray-700 hover:text-emerald-600 px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                >
+                  🗺️ Kaart
+                </a>
+                <a 
                   routerLink="/badges" 
                   routerLinkActive="bg-emerald-50 text-emerald-600"
                   class="text-gray-700 hover:text-emerald-600 px-3 py-2 rounded-lg text-sm font-semibold transition-colors"

@@ -1,12 +1,13 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { ApiService, Animal } from '../../services/api.service';
 
 @Component({
   selector: 'app-codex',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <header class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -245,6 +246,13 @@ import { ApiService, Animal } from '../../services/api.service';
                           <p><strong>Match score:</strong> {{ (obs.confidence * 100).toFixed(1) }}%</p>
                           @if (obs.notes) {
                             <p><strong>Notities:</strong> {{ obs.notes }}</p>
+                          }
+                          @if (obs.latitude != null && obs.longitude != null) {
+                            <a
+                              routerLink="/map"
+                              [queryParams]="{ lat: obs.latitude, lng: obs.longitude }"
+                              class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-900 transition-colors pt-1"
+                            >🗺️ Bekijk locatie op kaart →</a>
                           }
                         </div>
                       </div>
