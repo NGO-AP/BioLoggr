@@ -27,6 +27,7 @@ class Observation(SQLModel, table=True):
     )
     confidence: float
     notes: Optional[str] = None
+    is_wild: bool = Field(default=True)
 
     animal: Optional[Animal] = Relationship(back_populates="observations")
 

@@ -18,24 +18,29 @@ const BELGIUM_ZOOM = 8;
   template: `
     <div class="flex flex-col" style="height: calc(100vh - 9rem)">
 
-      <!-- Categorie-filterbalk (dark theme) -->
-      <div class="bg-gray-900 border-b border-gray-700 px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 flex-wrap">
-        <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mr-1 shrink-0">Klasse</span>
+      <!-- Categorie-filterbalk (theme-aware) -->
+      <div class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 flex-wrap transition-colors">
+        <span class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mr-1 shrink-0">Klasse</span>
         @for (cat of categories; track cat) {
           <button
             type="button"
             (click)="onCategoryChange(cat)"
             class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer border"
-            [class.bg-emerald-500]="selectedCategory() === cat"
+            [class.bg-emerald-600]="selectedCategory() === cat"
+            [class.dark:bg-emerald-500]="selectedCategory() === cat"
             [class.text-white]="selectedCategory() === cat"
-            [class.border-emerald-500]="selectedCategory() === cat"
-            [class.bg-transparent]="selectedCategory() !== cat"
-            [class.text-gray-300]="selectedCategory() !== cat"
-            [class.border-gray-600]="selectedCategory() !== cat"
+            [class.border-emerald-600]="selectedCategory() === cat"
+            [class.dark:border-emerald-500]="selectedCategory() === cat"
+            [class.bg-white]="selectedCategory() !== cat"
+            [class.dark:bg-transparent]="selectedCategory() !== cat"
+            [class.text-gray-600]="selectedCategory() !== cat"
+            [class.dark:text-gray-300]="selectedCategory() !== cat"
+            [class.border-gray-200]="selectedCategory() !== cat"
+            [class.dark:border-gray-600]="selectedCategory() !== cat"
           >{{ cat }}</button>
         }
         @if (!loading()) {
-          <span class="ml-auto text-xs text-gray-500 shrink-0">
+          <span class="ml-auto text-xs text-gray-400 dark:text-gray-500 shrink-0">
             {{ filteredAnimals().length }} waarneming(en) zichtbaar
           </span>
         }
@@ -46,32 +51,32 @@ const BELGIUM_ZOOM = 8;
 
         <!-- Laad-indicator -->
         @if (loading()) {
-          <div class="absolute inset-0 flex items-center justify-center bg-gray-900 z-[900]">
-            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500"></div>
+          <div class="absolute inset-0 flex items-center justify-center bg-gray-50 dark:bg-gray-900 z-[900]">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div>
           </div>
         }
 
         <!-- Leaflet kaart -->
         <div id="overview-map" class="absolute inset-0"></div>
 
-        <!-- Lege-staat overlay (dark) -->
+        <!-- Lege-staat overlay -->
         @if (!loading() && filteredAnimals().length === 0) {
           <div class="absolute inset-0 flex items-center justify-center z-[900] pointer-events-none">
-            <div class="bg-gray-900/95 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-2xl text-center space-y-3 pointer-events-auto max-w-sm mx-4">
+            <div class="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-2xl p-8 shadow-2xl text-center space-y-3 pointer-events-auto max-w-sm mx-4">
               <div class="text-4xl">🗺️</div>
-              <h3 class="font-bold text-gray-100 text-lg">Geen waarnemingen gevonden</h3>
+              <h3 class="font-bold text-gray-900 dark:text-gray-100 text-lg">Geen waarnemingen gevonden</h3>
               @if (selectedCategory() !== 'Alles') {
-                <p class="text-sm text-gray-400">
-                  Nog geen <strong class="text-gray-200">{{ selectedCategory() }}</strong>-waarnemingen met locatie geregistreerd.
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                  Nog geen <strong>{{ selectedCategory() }}</strong>-waarnemingen met locatie geregistreerd.
                 </p>
               } @else {
-                <p class="text-sm text-gray-400">
+                <p class="text-sm text-gray-600 dark:text-gray-400">
                   Nog geen waarnemingen met locatie gevonden.<br>Voeg er een toe via Observaties!
                 </p>
               }
               <a
                 routerLink="/observe"
-                class="inline-block bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+                class="inline-block bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
               >📸 Nieuwe Waarneming</a>
             </div>
           </div>

@@ -12,8 +12,8 @@ import { ApiService, Animal } from '../../services/api.service';
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <header class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 class="text-3xl font-black text-gray-900 tracking-tight">Dieren Codex</h1>
-          <p class="text-gray-600 mt-1">Ontdek alle waargenomen dieren, bekijk hun biologische fiche en ontgrendel de natuur.</p>
+          <h1 class="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Dieren Codex</h1>
+          <p class="text-gray-600 dark:text-gray-400 mt-1">Ontdek alle waargenomen dieren, bekijk hun biologische fiche en ontgrendel de natuur.</p>
         </div>
         <!-- Zoekbalk -->
         <div class="relative w-full md:w-72">
@@ -22,7 +22,7 @@ import { ApiService, Animal } from '../../services/api.service';
             [value]="searchQuery()"
             (input)="onSearchChange($event)"
             placeholder="Zoek dier op naam..."
-            class="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm pl-10"
+            class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm pl-10"
           />
           <span class="absolute left-3 top-3 text-gray-400 text-sm">🔍</span>
         </div>
@@ -37,41 +37,41 @@ import { ApiService, Animal } from '../../services/api.service';
           <!-- Linker Zijbalk (Filters) -->
           <aside class="space-y-6 lg:col-span-1">
             <!-- Categorie filter -->
-            <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-3">
-              <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Taxonomische Klasse</h3>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+              <h3 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Taxonomische Klasse</h3>
               <div class="flex flex-col space-y-1">
                 @for (cat of categories; track cat) {
-                  <button 
+                  <button
                     type="button"
                     (click)="selectedCategory.set(cat)"
                     class="text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
-                    [class.bg-emerald-50]="selectedCategory() === cat"
-                    [class.text-emerald-700]="selectedCategory() === cat"
+                    [class.bg-emerald-600]="selectedCategory() === cat"
+                    [class.text-white]="selectedCategory() === cat"
                     [class.text-gray-600]="selectedCategory() !== cat"
-                    [class.hover:bg-gray-50]="selectedCategory() !== cat"
-                  >
-                    {{ cat }}
-                  </button>
+                    [class.dark:text-gray-300]="selectedCategory() !== cat"
+                    [class.hover:bg-gray-100]="selectedCategory() !== cat"
+                    [class.dark:hover:bg-gray-700]="selectedCategory() !== cat"
+                  >{{ cat }}</button>
                 }
               </div>
             </div>
 
             <!-- Status filter -->
-            <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-3">
-              <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Ontdekkingsstatus</h3>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+              <h3 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Ontdekkingsstatus</h3>
               <div class="flex flex-col space-y-1">
                 @for (status of statuses; track status.id) {
-                  <button 
+                  <button
                     type="button"
                     (click)="selectedStatus.set(status.id)"
                     class="text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
-                    [class.bg-emerald-50]="selectedStatus() === status.id"
-                    [class.text-emerald-700]="selectedStatus() === status.id"
+                    [class.bg-emerald-600]="selectedStatus() === status.id"
+                    [class.text-white]="selectedStatus() === status.id"
                     [class.text-gray-600]="selectedStatus() !== status.id"
-                    [class.hover:bg-gray-50]="selectedStatus() !== status.id"
-                  >
-                    {{ status.label }}
-                  </button>
+                    [class.dark:text-gray-300]="selectedStatus() !== status.id"
+                    [class.hover:bg-gray-100]="selectedStatus() !== status.id"
+                    [class.dark:hover:bg-gray-700]="selectedStatus() !== status.id"
+                  >{{ status.label }}</button>
                 }
               </div>
             </div>
@@ -83,7 +83,7 @@ import { ApiService, Animal } from '../../services/api.service';
               @for (animal of filteredAnimals(); track animal.id) {
                 <div 
                   (click)="openDetail(animal)"
-                  class="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-all border border-gray-200 flex flex-col cursor-pointer group"
+                  class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-all border border-gray-200 dark:border-gray-700 flex flex-col cursor-pointer group"
                 >
                   <div class="h-48 bg-gray-100 relative overflow-hidden">
                     @if (animal.latest_observation) {
@@ -124,14 +124,14 @@ import { ApiService, Animal } from '../../services/api.service';
                         <span class="text-emerald-600 font-semibold">✓ Gespot</span>
                       }
                     </div>
-                    <h3 class="text-lg font-bold text-gray-900 group-hover:text-emerald-600 transition-colors leading-tight">{{ animal.dutch_name }}</h3>
-                    <p class="text-xs italic text-gray-500">{{ animal.scientific_name }}</p>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 transition-colors leading-tight">{{ animal.dutch_name }}</h3>
+                    <p class="text-xs italic text-gray-500 dark:text-gray-400">{{ animal.scientific_name }}</p>
                   </div>
                 </div>
               } @empty {
-                <div class="col-span-full text-center py-16 bg-white rounded-2xl border border-gray-200">
+                <div class="col-span-full text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
                   <div class="text-4xl mb-2">🌿</div>
-                  <p class="text-gray-500 font-medium">Geen dieren gevonden die aan je filters voldoen.</p>
+                  <p class="text-gray-500 dark:text-gray-400 font-medium">Geen dieren gevonden die aan je filters voldoen.</p>
                 </div>
               }
             </div>
@@ -142,26 +142,30 @@ import { ApiService, Animal } from '../../services/api.service';
       <!-- Schermvullend Detailoverzicht (Modal / Fullscreen view) -->
       @if (selectedAnimal(); as animal) {
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-fadeIn">
-          <div class="bg-white rounded-3xl shadow-2xl max-w-3xl w-full overflow-hidden border border-gray-100 relative my-8">
+          <div class="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl max-w-3xl w-full overflow-hidden border border-gray-100 dark:border-gray-800 relative my-8">
             <!-- Sluitknop -->
             <button 
               type="button" 
               (click)="closeDetail()"
-              class="absolute top-4 right-4 z-10 bg-white/80 hover:bg-white text-gray-700 rounded-full p-2.5 shadow transition-colors cursor-pointer backdrop-blur"
+              class="absolute top-4 right-4 z-10 bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full p-2.5 shadow transition-colors cursor-pointer backdrop-blur"
             >
               ✕
             </button>
 
             <div class="max-h-[90vh] overflow-y-auto">
-              <!-- Header Afbeelding -->
+              <!-- Header Afbeelding: observatiefoto bij ontdekte dieren, silhouet bij onbekenden -->
               <div class="h-72 bg-gray-900 relative">
-                @if (animal.image_url) {
-                  <img 
-                    [src]="'http://localhost:8000' + animal.image_url" 
-                    [alt]="animal.dutch_name" 
+                @if (animal.latest_observation) {
+                  <img
+                    [src]="'http://localhost:8000' + animal.latest_observation.image_path"
+                    [alt]="animal.dutch_name"
                     class="w-full h-full object-cover"
-                    [class.brightness-0]="!animal.latest_observation"
-                    [class.opacity-30]="!animal.latest_observation"
+                  >
+                } @else if (animal.image_url) {
+                  <img
+                    [src]="'http://localhost:8000' + animal.image_url"
+                    [alt]="animal.dutch_name"
+                    class="w-full h-full object-cover brightness-0 opacity-30"
                   >
                 }
                 <div class="absolute top-4 left-4 z-10">
@@ -185,45 +189,45 @@ import { ApiService, Animal } from '../../services/api.service';
                 @if (animal.latest_observation) {
                   <!-- Beschrijving -->
                   <div>
-                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Over dit dier</h4>
-                    <p class="text-gray-700 text-base leading-relaxed">{{ animal.description }}</p>
+                    <h4 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">Over dit dier</h4>
+                    <p class="text-gray-700 dark:text-gray-300 text-base leading-relaxed">{{ animal.description }}</p>
                   </div>
 
                   <!-- Biologische Fiche (extra_info) -->
                   @if (animal.extra_info) {
-                    <div class="bg-gray-50 rounded-2xl p-6 border border-gray-200/80 space-y-4">
-                      <h4 class="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <div class="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 border border-gray-200/80 dark:border-gray-700/80 space-y-4">
+                      <h4 class="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                         <span>🧬</span> Biologische Fiche
                       </h4>
                       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                         @if (animal.extra_info['habitat']) {
                           <div>
-                            <span class="block text-xs font-semibold text-gray-400 uppercase">Habitat</span>
-                            <span class="text-gray-800 font-medium">{{ animal.extra_info['habitat'] }}</span>
+                            <span class="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">Habitat</span>
+                            <span class="text-gray-800 dark:text-gray-200 font-medium">{{ animal.extra_info['habitat'] }}</span>
                           </div>
                         }
                         @if (animal.extra_info['diet']) {
                           <div>
-                            <span class="block text-xs font-semibold text-gray-400 uppercase">Dieet</span>
-                            <span class="text-gray-800 font-medium">{{ animal.extra_info['diet'] }}</span>
+                            <span class="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">Dieet</span>
+                            <span class="text-gray-800 dark:text-gray-200 font-medium">{{ animal.extra_info['diet'] }}</span>
                           </div>
                         }
                         @if (animal.extra_info['size']) {
                           <div>
-                            <span class="block text-xs font-semibold text-gray-400 uppercase">Afmetingen</span>
-                            <span class="text-gray-800 font-medium">{{ animal.extra_info['size'] }}</span>
+                            <span class="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">Afmetingen</span>
+                            <span class="text-gray-800 dark:text-gray-200 font-medium">{{ animal.extra_info['size'] }}</span>
                           </div>
                         }
                         @if (animal.extra_info['reproduction']) {
                           <div>
-                            <span class="block text-xs font-semibold text-gray-400 uppercase">Voortplanting</span>
-                            <span class="text-gray-800 font-medium">{{ animal.extra_info['reproduction'] }}</span>
+                            <span class="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">Voortplanting</span>
+                            <span class="text-gray-800 dark:text-gray-200 font-medium">{{ animal.extra_info['reproduction'] }}</span>
                           </div>
                         }
                         @if (animal.extra_info['status_bedreiging']) {
                           <div>
-                            <span class="block text-xs font-semibold text-gray-400 uppercase">Bedreigingsstatus</span>
-                            <span class="text-emerald-700 font-bold">{{ animal.extra_info['status_bedreiging'] }}</span>
+                            <span class="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">Bedreigingsstatus</span>
+                            <span class="text-emerald-700 dark:text-emerald-400 font-bold">{{ animal.extra_info['status_bedreiging'] }}</span>
                           </div>
                         }
                       </div>
@@ -232,13 +236,18 @@ import { ApiService, Animal } from '../../services/api.service';
 
                   <!-- Meest recente waarneming -->
                   @if (animal.latest_observation; as obs) {
-                    <div class="bg-emerald-50/60 rounded-2xl p-6 border border-emerald-200/80 space-y-4">
-                      <h4 class="text-sm font-bold text-emerald-900 flex items-center gap-2">
+                    <div class="bg-emerald-50/60 dark:bg-emerald-900/20 rounded-2xl p-6 border border-emerald-200/80 dark:border-emerald-800/50 space-y-4">
+                      <h4 class="text-sm font-bold text-emerald-900 dark:text-emerald-400 flex items-center gap-2">
                         <span>📸</span> Jouw Laatste Waarneming
                       </h4>
                       <div class="flex flex-col sm:flex-row gap-4 items-center">
                         <img [src]="'http://localhost:8000' + obs.image_path" alt="Waarneming foto" class="w-28 h-28 rounded-xl object-cover shadow-sm border border-emerald-200" />
-                        <div class="space-y-1 text-sm text-emerald-900 flex-1">
+                          <div class="space-y-1 text-sm text-emerald-900 dark:text-emerald-300 flex-1">
+                          @if (obs.is_wild) {
+                            <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400 mb-1">🌿 Gespot in het wild</span>
+                          } @else {
+                            <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-400 mb-1">🏛️ Gespot in dierentuin/opvang</span>
+                          }
                           <p><strong>Datum:</strong> {{ obs.timestamp | date:'medium' }}</p>
                           @if (obs.latitude != null && obs.longitude != null) {
                             <p class="tabular-nums"><strong>Coördinaten:</strong> {{ obs.latitude | number:'1.4-4' }}° N, {{ obs.longitude | number:'1.4-4' }}° O</p>
@@ -260,10 +269,10 @@ import { ApiService, Animal } from '../../services/api.service';
                   }
                 } @else {
                   <!-- Vergrendeld / Nog niet ontdekt -->
-                  <div class="bg-amber-50/60 border border-amber-200 rounded-2xl p-6 text-center space-y-3">
+                  <div class="bg-amber-50/60 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-6 text-center space-y-3">
                     <div class="text-3xl">🔒</div>
-                    <h3 class="text-lg font-bold text-amber-900">Nog niet ontdekt in het wild</h3>
-                    <p class="text-sm text-amber-800 max-w-md mx-auto">
+                    <h3 class="text-lg font-bold text-amber-900 dark:text-amber-400">Nog niet ontdekt in het wild</h3>
+                    <p class="text-sm text-amber-800 dark:text-amber-300 max-w-md mx-auto">
                       Dit dier is nog niet waargenomen in het wild. Trek de natuur in en voeg een observatie toe om het biologisch paspoort te ontgrendelen!
                     </p>
                   </div>

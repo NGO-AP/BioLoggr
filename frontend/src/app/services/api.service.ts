@@ -11,6 +11,7 @@ export interface Observation {
   timestamp: string;
   confidence: number;
   notes?: string;
+  is_wild: boolean;
 }
 
 export interface Animal {
@@ -52,8 +53,11 @@ export class ApiService {
     return this.http.get<Observation[]>(`${this.baseUrl}/observations`);
   }
 
-  createObservation(formData: FormData, lat: number, lon: number): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/observations?latitude=${lat}&longitude=${lon}`, formData);
+  createObservation(formData: FormData, lat: number, lon: number, isWild: boolean = true): Observable<any> {
+    return this.http.post<any>(
+      `${this.baseUrl}/observations?latitude=${lat}&longitude=${lon}&is_wild=${isWild}`,
+      formData
+    );
   }
 
   getBadges(): Observable<Badge[]> {

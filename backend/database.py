@@ -19,6 +19,14 @@ def init_db():
             conn.close()
             if columns and "category" not in columns:
                 os.remove(db_path)
+                return
+            # Migrate: add is_wild if missing
+            cursor.execute("PRAGMA table_info(observation);")
+            obs_cols = [col[1] for col in cursor.fetchall()]
+            if obs_cols and "is_wild" not in obs_cols:
+                cursor.execute("ALTER TABLE observation ADD COLUMN is_wild BOOLEAN NOT NULL DEFAULT 1")
+                conn.commit()
+            conn.close()
         except Exception:
             pass
 

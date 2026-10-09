@@ -195,7 +195,8 @@ def get_codex(session: Session = Depends(get_session)):
                 "longitude": latest_obs.longitude,
                 "image_path": latest_obs.image_path,
                 "notes": latest_obs.notes,
-                "confidence": latest_obs.confidence
+                "confidence": latest_obs.confidence,
+                "is_wild": latest_obs.is_wild
             } if latest_obs else None
         })
     return result
@@ -235,6 +236,7 @@ async def create_observation(
     latitude: float = Query(51.2194, description="Latitude of observation"),
     longitude: float = Query(4.4025, description="Longitude of observation"),
     notes: Optional[str] = None,
+    is_wild: bool = Query(True, description="True = in het wild, False = dierentuin/opvang"),
     session: Session = Depends(get_session)
 ):
     file_extension = os.path.splitext(file.filename)[1]
@@ -258,7 +260,8 @@ async def create_observation(
         longitude=longitude,
         image_path=f"/uploads/{saved_filename}",
         confidence=confidence,
-        notes=notes
+        notes=notes,
+        is_wild=is_wild
     )
     
     session.add(observation)
@@ -284,7 +287,8 @@ async def create_observation(
             "image_path": observation.image_path,
             "timestamp": observation.timestamp.isoformat() if observation.timestamp else None,
             "confidence": observation.confidence,
-            "notes": observation.notes
+            "notes": observation.notes,
+            "is_wild": observation.is_wild
         },
         "animal": {
             "id": animal.id,
