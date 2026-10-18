@@ -13,6 +13,10 @@ export interface Observation {
   confidence: number;
   notes?: string;
   is_wild: boolean;
+  iso?: number | null;
+  aperture?: number | null;
+  focal_length?: number | null;
+  shutter_speed?: string | null;
 }
 
 export interface Animal {

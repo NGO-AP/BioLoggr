@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { ThemeService } from './services/theme.service';
+import { ObserveResetService } from './services/observe-reset.service';
 import { ToastComponent } from './components/toast.component';
 
 @Component({
@@ -59,13 +60,14 @@ import { ToastComponent } from './components/toast.component';
                   </svg>
                 }
               </button>
-              <a 
-                routerLink="/observe" 
-                routerLinkActive="bg-emerald-700"
-                class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center gap-1.5"
+              <button
+                type="button"
+                (click)="startNewObservation()"
+                class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
+                [class.bg-emerald-700]="isObserveRoute()"
               >
                 <span>📸</span> Nieuwe Waarneming
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -85,4 +87,19 @@ import { ToastComponent } from './components/toast.component';
 })
 export class App {
   protected readonly themeService = inject(ThemeService);
+  private readonly router = inject(Router);
+  private readonly observeReset = inject(ObserveResetService);
+
+  protected isObserveRoute(): boolean {
+    const url = this.router.url.split('?')[0];
+    return url === '/observe';
+  }
+
+  protected startNewObservation(): void {
+    if (this.isObserveRoute()) {
+      this.observeReset.requestReset();
+      return;
+    }
+    void this.router.navigate(['/observe']);
+  }
 }

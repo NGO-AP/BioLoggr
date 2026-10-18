@@ -32,6 +32,15 @@ def init_db():
             if obs_cols and "thumbnail_path" not in obs_cols:
                 cur2.execute("ALTER TABLE observation ADD COLUMN thumbnail_path TEXT")
                 conn2.commit()
+            for col_name, col_def in (
+                ("iso", "INTEGER"),
+                ("aperture", "REAL"),
+                ("focal_length", "REAL"),
+                ("shutter_speed", "TEXT"),
+            ):
+                if obs_cols and col_name not in obs_cols:
+                    cur2.execute(f"ALTER TABLE observation ADD COLUMN {col_name} {col_def}")
+                    conn2.commit()
             conn2.close()
         except Exception:
             pass

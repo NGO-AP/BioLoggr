@@ -7,7 +7,7 @@ from fastapi import FastAPI, Depends, File, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session, select
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ExifTags
 
 from backend.database import init_db, get_session
 from backend.models import Animal, Observation, Badge
@@ -77,6 +77,108 @@ def _validate_image(image_bytes: bytes) -> None:
         )
 
 
+_EXIF_TAG_NAME_TO_ID = {v: k for k, v in ExifTags.TAGS.items()}
+
+
+def _rational_to_float(value) -> float | None:
+    if value is None:
+        return None
+    try:
+        if hasattr(value, "numerator") and hasattr(value, "denominator"):
+            if value.denominator == 0:
+                return None
+            return float(value.numerator) / float(value.denominator)
+        if isinstance(value, tuple) and len(value) == 2:
+            num, den = value
+            if den == 0:
+                return None
+            return float(num) / float(den)
+        return float(value)
+    except (TypeError, ValueError, ZeroDivisionError):
+        return None
+
+
+def _format_shutter_speed(exposure_time) -> str | None:
+    seconds = _rational_to_float(exposure_time)
+    if seconds is None or seconds <= 0:
+        return None
+    if seconds >= 1:
+        text = f"{seconds:g}"
+        return text if text.endswith("s") else f"{text}s"
+    denom = max(1, round(1 / seconds))
+    return f"1/{denom}"
+
+
+def _parse_exif_datetime_original(raw: str | None) -> datetime | None:
+    if not raw or not isinstance(raw, str):
+        return None
+    text = raw.strip()
+    for fmt in ("%Y:%m:%d %H:%M:%S", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _extract_photo_exif(image_bytes: bytes) -> dict:
+    """Lees EXIF vóór WebP-conversie (originele metadata)."""
+    defaults = {
+        "iso": None,
+        "aperture": None,
+        "focal_length": None,
+        "shutter_speed": None,
+        "timestamp": datetime.now(),
+    }
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        exif = img.getexif()
+        if not exif:
+            return defaults
+
+        exif_ifd = exif.get_ifd(0x8769) if hasattr(exif, "get_ifd") else {}
+        merged: dict = {}
+        for source in (exif, exif_ifd):
+            if not source:
+                continue
+            for tag_id, value in source.items():
+                merged[tag_id] = value
+
+        iso = merged.get(_EXIF_TAG_NAME_TO_ID.get("ISOSpeedRatings", 34855))
+        if iso is None:
+            iso = merged.get(_EXIF_TAG_NAME_TO_ID.get("PhotographicSensitivity", 34864))
+        if isinstance(iso, (list, tuple)) and iso:
+            iso = iso[0]
+
+        aperture = _rational_to_float(merged.get(_EXIF_TAG_NAME_TO_ID.get("FNumber", 33437)))
+        focal_length = _rational_to_float(merged.get(_EXIF_TAG_NAME_TO_ID.get("FocalLength", 37386)))
+        shutter_speed = _format_shutter_speed(merged.get(_EXIF_TAG_NAME_TO_ID.get("ExposureTime", 33434)))
+
+        dt_original = merged.get(_EXIF_TAG_NAME_TO_ID.get("DateTimeOriginal", 36867))
+        if dt_original is None:
+            dt_original = merged.get(_EXIF_TAG_NAME_TO_ID.get("DateTime", 306))
+        capture_time = _parse_exif_datetime_original(dt_original if isinstance(dt_original, str) else None)
+        if capture_time is None:
+            capture_time = datetime.now()
+
+        iso_value = None
+        if iso is not None:
+            try:
+                iso_value = int(iso)
+            except (TypeError, ValueError):
+                iso_value = None
+
+        return {
+            "iso": iso_value,
+            "aperture": aperture,
+            "focal_length": focal_length,
+            "shutter_speed": shutter_speed,
+            "timestamp": capture_time,
+        }
+    except Exception:
+        return defaults
+
+
 def _compress_image(image_bytes: bytes, filename_base: str) -> tuple[str, str, str, str]:
     """Compress image to WebP and generate square thumbnail.
 
@@ -84,6 +186,7 @@ def _compress_image(image_bytes: bytes, filename_base: str) -> tuple[str, str, s
         (main_fs_path, thumb_fs_path, main_url, thumb_url)
     """
     img = Image.open(io.BytesIO(image_bytes))
+    img = ImageOps.exif_transpose(img)
     img = img.convert("RGB")
 
     # Resize main image while keeping aspect ratio
@@ -113,6 +216,10 @@ def _obs_to_dict(obs: "Observation") -> dict:
         "notes": obs.notes,
         "confidence": obs.confidence,
         "is_wild": obs.is_wild,
+        "iso": obs.iso,
+        "aperture": obs.aperture,
+        "focal_length": obs.focal_length,
+        "shutter_speed": obs.shutter_speed,
     }
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
@@ -342,6 +449,8 @@ async def create_observation(
     # Stap 1: Valideer dat het daadwerkelijk een afbeelding is (voor verwerking)
     _validate_image(image_bytes)
 
+    photo_exif = _extract_photo_exif(image_bytes)
+
     # Stap 2: Sla op met veilige, UUID-gebaseerde bestandsnaam (geen gebruikersinput)
     safe_base = _safe_filename_base(file.filename)
     filename_base = os.path.splitext(safe_base)[0]
@@ -391,7 +500,12 @@ async def create_observation(
         thumbnail_path=thumbnail_url,
         confidence=confidence,
         notes=notes,
-        is_wild=is_wild
+        is_wild=is_wild,
+        timestamp=photo_exif["timestamp"],
+        iso=photo_exif["iso"],
+        aperture=photo_exif["aperture"],
+        focal_length=photo_exif["focal_length"],
+        shutter_speed=photo_exif["shutter_speed"],
     )
     
     # Compute unlocked badges BEFORE saving the new observation

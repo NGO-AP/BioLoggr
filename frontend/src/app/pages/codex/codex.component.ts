@@ -305,43 +305,69 @@ import { ApiService, Animal, Observation } from '../../services/api.service';
                         <span class="ml-1 text-xs font-normal text-gray-400">({{ detailObservations().length }})</span>
                       </h4>
                       @for (obs of detailObservations(); track obs.id) {
-                        <div class="bg-emerald-50/60 dark:bg-emerald-900/20 rounded-2xl p-4 border border-emerald-200/80 dark:border-emerald-800/50">
-                          <div class="flex flex-col sm:flex-row gap-4 items-start">
+                        <div class="bg-emerald-50/60 dark:bg-emerald-900/20 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/50 overflow-hidden flex flex-col sm:flex-row items-stretch">
                             <img
                               [src]="'http://localhost:8000' + (obs.thumbnail_path ?? obs.image_path)"
                               alt="Waarneming foto"
-                              class="w-24 h-24 rounded-xl object-cover shadow-sm border border-emerald-200 shrink-0"
+                              class="w-full h-36 sm:w-36 sm:h-auto sm:self-stretch shrink-0 object-cover rounded-t-2xl sm:rounded-t-none sm:rounded-l-2xl border-b sm:border-b-0 sm:border-r border-emerald-200/80 dark:border-emerald-800/50"
                             />
-                            <div class="space-y-1 text-sm text-emerald-900 dark:text-emerald-300 flex-1 min-w-0">
+                            <div class="flex flex-col gap-3 p-4 text-sm text-emerald-900 dark:text-emerald-300 flex-1 min-w-0">
                               @if (obs.is_wild) {
-                                <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400">🌿 In het wild</span>
+                                <span class="inline-flex w-fit items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400">🌿 In het wild</span>
                               } @else {
-                                <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-400">🏛️ Dierentuin/opvang</span>
+                                <span class="inline-flex w-fit items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-400">🏛️ Dierentuin/opvang</span>
                               }
-                              <p><strong>Datum:</strong> {{ obs.timestamp | date:'medium' }}</p>
-                              @if (obs.latitude != null && obs.longitude != null) {
-                                <p class="tabular-nums"><strong>Coördinaten:</strong> {{ obs.latitude | number:'1.4-4' }}° N, {{ obs.longitude | number:'1.4-4' }}° O</p>
+                              <div class="flex flex-col gap-1">
+                                <p class="tabular-nums"><strong>Datum:</strong> {{ obs.timestamp | date:'dd-MM-yyyy HH:mm:ss' }}</p>
+                                @if (obs.latitude != null && obs.longitude != null) {
+                                  <p class="tabular-nums"><strong>Coördinaten:</strong> {{ obs.latitude | number:'1.4-4' }}° N, {{ obs.longitude | number:'1.4-4' }}° O</p>
+                                }
+                              </div>
+                              @if (hasPhotoExif(obs)) {
+                                <div class="flex flex-row flex-wrap gap-2 text-xs tabular-nums">
+                                  @if (obs.iso) {
+                                    <span class="rounded-lg bg-white/70 dark:bg-gray-900/40 px-2 py-1 border border-emerald-200/80 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-200">
+                                      ISO {{ obs.iso }}
+                                    </span>
+                                  }
+                                  @if (obs.aperture) {
+                                    <span class="rounded-lg bg-white/70 dark:bg-gray-900/40 px-2 py-1 border border-emerald-200/80 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-200">
+                                      f/{{ obs.aperture | number:'1.0-1' }}
+                                    </span>
+                                  }
+                                  @if (obs.focal_length) {
+                                    <span class="rounded-lg bg-white/70 dark:bg-gray-900/40 px-2 py-1 border border-emerald-200/80 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-200">
+                                      {{ obs.focal_length | number:'1.0-0' }} mm
+                                    </span>
+                                  }
+                                  @if (obs.shutter_speed) {
+                                    <span class="rounded-lg bg-white/70 dark:bg-gray-900/40 px-2 py-1 border border-emerald-200/80 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-200">
+                                      {{ obs.shutter_speed }}
+                                    </span>
+                                  }
+                                </div>
                               }
-                              <p><strong>Match score:</strong> {{ (obs.confidence * 100).toFixed(1) }}%</p>
                               @if (obs.notes) {
                                 <p class="truncate"><strong>Notities:</strong> {{ obs.notes }}</p>
                               }
-                              <div class="flex items-center gap-3 pt-1">
-                                @if (obs.latitude != null && obs.longitude != null) {
-                                  <a
-                                    routerLink="/map"
-                                    [queryParams]="{ lat: obs.latitude, lng: obs.longitude }"
-                                    class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-900 transition-colors"
-                                  >🗺️ Bekijk op kaart →</a>
-                                }
+                              <div class="flex flex-row justify-between items-end mt-auto pt-2 gap-3 w-full">
+                                <div class="flex flex-col gap-1 min-w-0">
+                                  <p><strong>Match score:</strong> {{ (obs.confidence * 100).toFixed(1) }}%</p>
+                                  @if (obs.latitude != null && obs.longitude != null) {
+                                    <a
+                                      routerLink="/map"
+                                      [queryParams]="{ lat: obs.latitude, lng: obs.longitude }"
+                                      class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-900 dark:hover:text-emerald-300 transition-colors w-fit"
+                                    >🗺️ Bekijk op kaart →</a>
+                                  }
+                                </div>
                                 <button
                                   type="button"
                                   (click)="confirmDeleteObservation(obs.id, animal.id)"
-                                  class="inline-flex items-center gap-1 text-xs font-semibold text-red-500 hover:text-red-700 transition-colors ml-auto cursor-pointer"
+                                  class="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-red-500 hover:text-red-700 transition-colors cursor-pointer"
                                 >🗑️ Verwijderen</button>
                               </div>
                             </div>
-                          </div>
                         </div>
                       }
                     </div>
@@ -396,25 +422,38 @@ export class CodexComponent implements OnInit {
   protected readonly searchQuery = signal<string>('');
   protected readonly selectedAnimal = signal<Animal | null>(null);
 
+  private pendingSpeciesId: number | null = null;
+
   ngOnInit() {
-    const openId = parseInt(this.route.snapshot.queryParamMap.get('open') ?? '', 10);
+    this.route.queryParams.subscribe((params) => {
+      const raw = params['speciesId'];
+      const id = parseInt(raw ?? '', 10);
+      this.pendingSpeciesId = Number.isNaN(id) ? null : id;
+      this.tryOpenSpeciesFromQuery();
+    });
 
     this.apiService.getCodex().subscribe({
       next: (data) => {
         const list = Array.isArray(data) ? data : [];
         this.animals.set(list);
         this.loading.set(false);
-        // Open de dierkaart direct als ?open=<id> meegegeven is
-        if (!isNaN(openId)) {
-          const target = list.find(a => a.id === openId);
-          if (target) this.openDetail(target);
-        }
+        this.tryOpenSpeciesFromQuery();
       },
       error: (err) => {
         console.error('Fout bij ophalen codex:', err);
         this.loading.set(false);
       }
     });
+  }
+
+  private tryOpenSpeciesFromQuery(): void {
+    const speciesId = this.pendingSpeciesId;
+    if (speciesId == null || this.loading()) return;
+    const target = this.animals().find((a) => a.id === speciesId);
+    if (target) {
+      this.openDetail(target);
+      this.pendingSpeciesId = null;
+    }
   }
 
   protected onSearchChange(event: Event): void {
@@ -522,6 +561,15 @@ export class CodexComponent implements OnInit {
     if (!current.has(animalId)) {
       this.brokenImages.set(new Set([...current, animalId]));
     }
+  }
+
+  protected hasPhotoExif(obs: Observation): boolean {
+    return (
+      obs.iso != null ||
+      obs.aperture != null ||
+      obs.focal_length != null ||
+      (obs.shutter_speed != null && obs.shutter_speed !== '')
+    );
   }
 
   protected categoryIcon(category: string): string {

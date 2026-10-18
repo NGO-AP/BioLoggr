@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject, afterEveryRender } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, ActivatedRoute } from '@angular/router';
+import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { ApiService, Animal } from '../../services/api.service';
 import * as L from 'leaflet';
 
@@ -88,6 +88,7 @@ const BELGIUM_ZOOM = 8;
 export class MapComponent implements OnInit, OnDestroy {
   private apiService = inject(ApiService);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   private map: L.Map | null = null;
   private markerLayer: L.LayerGroup | null = null;
@@ -141,8 +142,18 @@ export class MapComponent implements OnInit, OnDestroy {
     this.map?.remove();
   }
 
-  /** Wordt aangeroepen vanuit de popup-knop (via window-scope event-delegation) */
-  private onPopupDeleteClick = (e: Event): void => {
+  /** Event-delegation voor knoppen in Leaflet-popups (Codex-link, verwijderen). */
+  private onPopupClick = (e: Event): void => {
+    const codexBtn = (e.target as HTMLElement).closest('[data-codex-species]') as HTMLElement | null;
+    if (codexBtn) {
+      e.preventDefault();
+      const speciesId = parseInt(codexBtn.dataset['codexSpecies'] ?? '', 10);
+      if (!isNaN(speciesId)) {
+        this.router.navigate(['/'], { queryParams: { speciesId } });
+      }
+      return;
+    }
+
     const btn = (e.target as HTMLElement).closest('[data-del-obs]') as HTMLElement | null;
     if (!btn) return;
     const obsId = parseInt(btn.dataset['delObs'] ?? '', 10);
@@ -191,7 +202,7 @@ export class MapComponent implements OnInit, OnDestroy {
     this.markerLayer = L.layerGroup().addTo(this.map);
 
     // Event-delegation voor de verwijderknop in popups
-    this.map.getContainer().addEventListener('click', this.onPopupDeleteClick);
+    this.map.getContainer().addEventListener('click', this.onPopupClick);
 
     // Data kan al geladen zijn vóór de kaart geïnitialiseerd was
     if (!this.loading()) {
@@ -242,8 +253,14 @@ export class MapComponent implements OnInit, OnDestroy {
 
   private buildPopup(animal: Animal): string {
     const obs = animal.latest_observation!;
-    const date = new Date(obs.timestamp).toLocaleDateString('nl-BE', {
-      day: 'numeric', month: 'long', year: 'numeric',
+    const date = new Date(obs.timestamp).toLocaleString('nl-BE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
     });
     const imgUrl = `http://localhost:8000${obs.image_path}`;
     // Escape om XSS te vermijden
@@ -262,12 +279,12 @@ export class MapComponent implements OnInit, OnDestroy {
           <div style="font-style:italic;font-size:11px;color:#6b7280;margin:2px 0 5px">${sci}</div>
           <div style="font-size:11px;color:#4b5563;margin-bottom:10px">📅 ${date}</div>
           <div style="display:flex;gap:6px">
-            <a href="/?open=${animalId}"
+            <button type="button" data-codex-species="${animalId}"
               style="flex:1;text-align:center;background:#10b981;color:#fff;
                      font-size:12px;font-weight:600;padding:5px 0;border-radius:6px;
-                     text-decoration:none">
+                     border:none;cursor:pointer;font-family:inherit">
               Codex →
-            </a>
+            </button>
             <button
               data-del-obs="${obsId}"
               data-animal-id="${animalId}"

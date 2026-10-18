@@ -29,6 +29,10 @@ class Observation(SQLModel, table=True):
     notes: Optional[str] = None
     is_wild: bool = Field(default=True)
     thumbnail_path: Optional[str] = None
+    iso: Optional[int] = None
+    aperture: Optional[float] = None
+    focal_length: Optional[float] = None
+    shutter_speed: Optional[str] = None
 
     animal: Optional[Animal] = Relationship(back_populates="observations")
 

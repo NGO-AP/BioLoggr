@@ -1,8 +1,10 @@
 import { Component, signal, inject, afterEveryRender, OnDestroy } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { ApiService, Animal, Observation, BadgeSummary, Suggestion } from '../../services/api.service';
 import { ToastService } from '../../services/toast.service';
+import { ObserveResetService } from '../../services/observe-reset.service';
 import * as L from 'leaflet';
 import { gps as parseGps } from 'exifr';
 
@@ -33,7 +35,7 @@ const DEFAULT_LON = 4.4;
 @Component({
   selector: 'app-observe',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule],
   template: `
     <div class="max-w-3xl mx-auto px-4 py-8">
       <h1 class="text-3xl font-black text-gray-900 dark:text-gray-100 mb-2">Observatie Toevoegen</h1>
@@ -105,12 +107,13 @@ const DEFAULT_LON = 4.4;
             >
               Nog een observatie doen
             </button>
-            <a
-              routerLink="/"
-              class="flex-1 text-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold py-3 px-4 rounded-xl transition-colors"
+            <button
+              type="button"
+              (click)="openInCodex()"
+              class="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold py-3 px-4 rounded-xl transition-colors cursor-pointer"
             >
               Bekijk in Codex
-            </a>
+            </button>
           </div>
         </div>
 
@@ -377,6 +380,7 @@ const DEFAULT_LON = 4.4;
 export class ObserveComponent implements OnDestroy {
   private apiService = inject(ApiService);
   private toastService = inject(ToastService);
+  private router = inject(Router);
 
   private map: L.Map | null = null;
   private marker: L.Marker | null = null;
@@ -409,6 +413,11 @@ export class ObserveComponent implements OnDestroy {
   protected readonly isSearching = signal<boolean>(false);
 
   constructor() {
+    inject(ObserveResetService)
+      .onResetRequested$
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.resetForm());
+
     afterEveryRender(() => {
       if (this.result()) {
         if (this.mapInitialized) {
@@ -535,6 +544,12 @@ export class ObserveComponent implements OnDestroy {
         console.error(err);
       }
     });
+  }
+
+  protected openInCodex(): void {
+    const res = this.result();
+    if (!res?.animal?.id) return;
+    this.router.navigate(['/'], { queryParams: { speciesId: res.animal.id } });
   }
 
   protected resetForm(): void {
