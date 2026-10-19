@@ -234,11 +234,11 @@ def test_ai_sharp_badge(session_with_animals: Session):
 
 # ─── GET /api/badges endpoint tests ──────────────────────────────────────────
 
-def test_badges_endpoint_returns_52(client: TestClient):
+def test_badges_endpoint_returns_67(client: TestClient):
     response = client.get("/api/badges")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 52
+    assert len(data) == 67
 
 
 def test_badges_have_required_fields(client: TestClient):
@@ -267,10 +267,10 @@ def test_stats_endpoint(client: TestClient):
     assert "total_codex" in data
     assert "badges_unlocked" in data
     assert "badges_total" in data
-    assert data["badges_total"] == 52
+    assert data["badges_total"] == 67
     assert "by_category" in data
     assert "challenges_total" in data
-    assert data["challenges_total"] == 7
+    assert data["challenges_total"] == 9
 
 
 # ─── POST /api/observations → newly_unlocked_badges tests ────────────────────

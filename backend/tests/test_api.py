@@ -73,8 +73,8 @@ def test_get_badges(client: TestClient):
     response = client.get("/api/badges")
     assert response.status_code == 200
     data = response.json()
-    # Nieuwe dynamische badge-engine retourneert alle 52 badges
-    assert len(data) == 52
+    # Nieuwe dynamische badge-engine retourneert alle 67 badges
+    assert len(data) == 67
     # Verifieer de vereiste velden van het nieuwe formaat
     assert "id" in data[0]
     assert "title" in data[0]

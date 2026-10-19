@@ -1,4 +1,4 @@
-"""badge_service.py — BioLoggr badge evaluation engine (52 badges).
+"""badge_service.py — BioLoggr badge evaluation engine (67 badges).
 
 All badge logic is computed dynamically from the observation + animal data in
 SQLite.  Unlock timestamps are persisted in the BadgeUnlock table.
@@ -97,6 +97,10 @@ _DRAGONFLY_KW = ["libel", "juffer", "glazenmaker", "heidelibel", "waterjuffer", 
 _BEE_KW = ["bij", "hommel"]
 _BEETLE_KW = ["kever", "lieveheersbeestje", "tor", "vliegend hert"]
 _LADYBUG_KW = ["lieveheersbeestje"]
+_TURTLE_KW = ["schildpad", "matamata"]
+_PARROT_KW = ["papegaai", "ara", "kaketoe", "parkiet", "lori", "kea"]
+_PRIMATE_KW = ["aap", "makaak", "baviaan", "gorilla", "chimpansee", "orang", "maki", "gibbon", "vari", "sifaka", "gelada"]
+_PREDATOR_KW = ["leeuw", "tijger", "panter", "luipaard", "beer", "wolf", "hyena", "vos", "jaguar", "poema", "lynx", "otter", "cheeta", "jachtluipaard"]
 
 
 def _match(animal: Animal, genera: set, kw: list) -> bool:
@@ -143,6 +147,18 @@ def _is_beetle(a: Animal) -> bool:
 
 def _is_ladybug(a: Animal) -> bool:
     return a.category == "Insecten" and _match(a, _LADYBUG_GENERA, _LADYBUG_KW)
+
+def _is_turtle(a: Animal) -> bool:
+    return a.category == "Reptielen & Amfibieën" and any(k in a.dutch_name.lower() for k in _TURTLE_KW)
+
+def _is_parrot(a: Animal) -> bool:
+    return a.category == "Vogels" and any(k in a.dutch_name.lower() for k in _PARROT_KW)
+
+def _is_primate(a: Animal) -> bool:
+    return a.category == "Zoogdieren" and any(k in a.dutch_name.lower() for k in _PRIMATE_KW)
+
+def _is_predator(a: Animal) -> bool:
+    return a.category == "Zoogdieren" and any(k in a.dutch_name.lower() for k in _PREDATOR_KW)
 
 # ─── Time helpers ────────────────────────────────────────────────────────────
 
@@ -219,6 +235,16 @@ def _compute_data(session: Session) -> dict[str, Any]:
     total_codex = len(animals)
     reptile_codex = sum(1 for a in animals.values() if a.category == "Reptielen & Amfibieën")
 
+    zoo_ids = {o.animal_id for o in observations if not o.is_wild}
+    pro_exif_obs = sum(
+        1 for o in observations if o.iso and o.aperture and o.shutter_speed and o.focal_length
+    )
+
+    by_day_origin: dict[str, set[bool]] = defaultdict(set)
+    for o in observations:
+        by_day_origin[o.timestamp.date().isoformat()].add(o.is_wild)
+    world_traveler = any(True in origins and False in origins for origins in by_day_origin.values())
+
     return {
         "total_obs": total_obs,
         "wild_obs": wild_obs,
@@ -250,6 +276,13 @@ def _compute_data(session: Session) -> dict[str, Any]:
         "bees": _taxo(insects_ids, _is_bee),
         "beetles": _taxo(insects_ids, _is_beetle),
         "ladybugs": _taxo(insects_ids, _is_ladybug),
+        "zoo_unique": len(zoo_ids),
+        "pro_exif_obs": pro_exif_obs,
+        "world_traveler": world_traveler,
+        "turtles": _taxo(reptiles_ids, _is_turtle),
+        "parrots": _taxo(birds_ids, _is_parrot),
+        "primates": _taxo(mammals_ids, _is_primate),
+        "predators": _taxo(mammals_ids, _is_predator),
         "total_codex": total_codex,
         "reptile_codex": reptile_codex,
         "grand_slam": _check_grand_slam(observations, animals),
@@ -257,7 +290,7 @@ def _compute_data(session: Session) -> dict[str, Any]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Badge registry — 52 badges
+# Badge registry — 67 badges
 # Each "check" returns (unlocked: bool, current: int, target: int)
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -288,7 +321,7 @@ BADGE_REGISTRY: list[dict] = [
     },
     {
         "id": "tracker_wild_2",
-        "title": "Echte Freek",
+        "title": "Echte Freak",
         "description": "Registreer 25 wilde waarnemingen.",
         "category": "veldwerk",
         "icon": "🦺",
@@ -443,7 +476,7 @@ BADGE_REGISTRY: list[dict] = [
     {
         "id": "bird_song",
         "title": "Zanglijster",
-        "description": "Ontdek 5 kleine zangvogels (mezen, vinken, meerlen, roodborst).",
+        "description": "Ontdek 5 kleine zangvogels (mezen, vinken, merels, roodborst).",
         "category": "vogels",
         "icon": "🎵",
         "is_challenge": False,
@@ -570,7 +603,7 @@ BADGE_REGISTRY: list[dict] = [
     },
     {
         "id": "dragonfly_master",
-        "title": "Groot Libellenjager",
+        "title": "Grote Libellenjager",
         "description": "Ontdek 8 unieke libellen- of juffersoorten.",
         "category": "insecten",
         "icon": "💎",
@@ -757,6 +790,144 @@ BADGE_REGISTRY: list[dict] = [
         "is_challenge": True,
         "check": lambda d: _mk(d, "unique_observed", 100),
     },
+    # ── FOTOGRAFIE ───────────────────────────────────────────────────────────
+    {
+        "id": "photo_pro_1",
+        "title": "Cameraman",
+        "description": "10 waarnemingen met volledige EXIF-fotodata.",
+        "category": "fotografie",
+        "icon": "📸",
+        "is_challenge": False,
+        "check": lambda d: _mk(d, "pro_exif_obs", 10),
+    },
+    {
+        "id": "photo_pro_2",
+        "title": "Studiofotograaf",
+        "description": "50 waarnemingen met volledige EXIF-fotodata.",
+        "category": "fotografie",
+        "icon": "⚙️",
+        "is_challenge": False,
+        "check": lambda d: _mk(d, "pro_exif_obs", 50),
+    },
+    # ── VELDWERK & ZOO UITBREIDING ───────────────────────────────────────────
+    {
+        "id": "zoo_director",
+        "title": "Dierentuin Directeur",
+        "description": "50 waarnemingen in de dierentuin.",
+        "category": "veldwerk",
+        "icon": "🦁",
+        "is_challenge": False,
+        "check": lambda d: _mk(d, "zoo_obs", 50),
+    },
+    {
+        "id": "zoo_tycoon",
+        "title": "Dierenparktycoon",
+        "description": "100 waarnemingen in de dierentuin.",
+        "category": "veldwerk",
+        "icon": "🎪",
+        "is_challenge": False,
+        "check": lambda d: _mk(d, "zoo_obs", 100),
+    },
+    {
+        "id": "world_traveler",
+        "title": "Wereldreiziger",
+        "description": "Registreer op exact dezelfde dag zowel een wild dier als een dierentuindier.",
+        "category": "veldwerk",
+        "icon": "🧭",
+        "is_challenge": True,
+        "check": lambda d: (d["world_traveler"], 1 if d["world_traveler"] else 0, 1),
+    },
+    {
+        "id": "pure_zoo_50",
+        "title": "Kweekprogramma",
+        "description": "Ontdek 50 unieke soorten in de dierentuin.",
+        "category": "veldwerk",
+        "icon": "🎟️",
+        "is_challenge": True,
+        "check": lambda d: _mk(d, "zoo_unique", 50),
+    },
+    {
+        "id": "night_owl_3",
+        "title": "Nachtwacht",
+        "description": "15 waarnemingen tussen 22:00 en 05:00.",
+        "category": "veldwerk",
+        "icon": "🦇",
+        "is_challenge": False,
+        "check": lambda d: _mk(d, "night_obs", 15),
+    },
+    {
+        "id": "early_bird_2",
+        "title": "Ochtendgloren",
+        "description": "5 vroege waarnemingen (voor 07:30).",
+        "category": "veldwerk",
+        "icon": "☕",
+        "is_challenge": False,
+        "check": lambda d: _mk(d, "early_obs", 5),
+    },
+    {
+        "id": "cartographer_4",
+        "title": "Satelliet",
+        "description": "Leg de GPS-locatie vast bij 100 waarnemingen.",
+        "category": "veldwerk",
+        "icon": "📡",
+        "is_challenge": False,
+        "check": lambda d: _mk(d, "gps_obs", 100),
+    },
+    {
+        "id": "codex_150",
+        "title": "Veldgids Expert",
+        "description": "Ontdek 150 unieke soorten in de codex.",
+        "category": "mijlpalen",
+        "icon": "📘",
+        "is_challenge": False,
+        "check": lambda d: _mk(d, "unique_observed", 150),
+    },
+    # ── NIEUWE TAXONOMIE & SOORTEN ───────────────────────────────────────────
+    {
+        "id": "herpeto_turtle",
+        "title": "Schildpaddenfan",
+        "description": "Ontdek minstens 1 schildpad.",
+        "category": "landdieren",
+        "icon": "🐢",
+        "is_challenge": False,
+        "check": lambda d: _mk(d, "turtles", 1),
+    },
+    {
+        "id": "bird_parrot",
+        "title": "Piraat",
+        "description": "Ontdek 3 verschillende papegaaien, ara's of kaketoes.",
+        "category": "vogels",
+        "icon": "🦜",
+        "is_challenge": False,
+        "check": lambda d: _mk(d, "parrots", 3),
+    },
+    {
+        "id": "mammal_monkey",
+        "title": "Apenkooi",
+        "description": "Ontdek 5 verschillende apen, bavianen of halfapen.",
+        "category": "landdieren",
+        "icon": "🐒",
+        "is_challenge": False,
+        "check": lambda d: _mk(d, "primates", 5),
+    },
+    {
+        "id": "mammal_predator",
+        "title": "Roofdierjager",
+        "description": "Ontdek 5 grote roofdieren (katachtigen, beren, wolven, etc.).",
+        "category": "landdieren",
+        "icon": "🐅",
+        "is_challenge": False,
+        "check": lambda d: _mk(d, "predators", 5),
+    },
+    {
+        "id": "mammal_safari",
+        "title": "Safari Expert",
+        "description": "Ontdek 15 unieke zoogdiersoorten.",
+        "category": "landdieren",
+        "icon": "🦓",
+        "is_challenge": False,
+        "check": lambda d: _mk(d, "mammals", 15),
+    },
 ]
 
 
@@ -775,7 +946,7 @@ def evaluate_unlocked_badge_ids(session: Session) -> set[str]:
 
 
 def get_badges_with_progress(session: Session) -> list[dict]:
-    """Compute progress for all 52 badges and persist new unlock timestamps."""
+    """Compute progress for all 67 badges and persist new unlock timestamps."""
     data = _compute_data(session)
 
     # Load existing unlock records
