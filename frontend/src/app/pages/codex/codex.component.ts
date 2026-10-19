@@ -33,37 +33,64 @@ import { ApiService, Animal, Observation } from '../../services/api.service';
           <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
         </div>
       } @else {
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-[18rem_1fr] gap-8">
           <!-- Linker Zijbalk (Filters) — sticky zodat filters altijd zichtbaar zijn -->
-          <aside class="space-y-3 lg:col-span-1 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pb-2">
+          <aside class="space-y-3 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pb-2">
 
-            <!-- Herbruikbare filter-knop macro: dezelfde stijl voor alle 3 blokken -->
-            <!-- Categorie filter -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-sm space-y-1">
-              <h3 class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-1 pb-1">Taxonomische Klasse</h3>
-              @for (cat of categories; track cat) {
-                <button
-                  type="button"
-                  (click)="selectedCategory.set(cat)"
-                  class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer w-full"
-                  [class.bg-emerald-600]="selectedCategory() === cat"
-                  [class.text-white]="selectedCategory() === cat"
-                  [class.text-gray-600]="selectedCategory() !== cat"
-                  [class.dark:text-gray-300]="selectedCategory() !== cat"
-                  [class.hover:bg-gray-100]="selectedCategory() !== cat"
-                  [class.dark:hover:bg-gray-700]="selectedCategory() !== cat"
-                >
-                  <span>{{ cat }}</span>
-                  <span class="tabular-nums ml-1 px-1 py-0.5 rounded text-[10px] font-semibold"
-                    [class.bg-emerald-500]="selectedCategory() === cat"
-                    [class.text-white]="selectedCategory() === cat"
-                    [class.bg-gray-100]="selectedCategory() !== cat"
-                    [class.dark:bg-gray-700]="selectedCategory() !== cat"
-                    [class.text-gray-500]="selectedCategory() !== cat"
-                    [class.dark:text-gray-400]="selectedCategory() !== cat"
-                  >{{ categoryCounts()[cat] ?? 0 }}</span>
-                </button>
-              }
+            <!-- Herkomst filter -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-sm space-y-2">
+              <h3 class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-1">Herkomst</h3>
+              <div class="flex flex-row flex-wrap gap-2 justify-center">
+                @for (origin of origins; track origin.id) {
+                  <button
+                    type="button"
+                    (click)="selectedOrigin.set(origin.id)"
+                    [title]="origin.title"
+                    class="min-h-[4.5rem] px-2 py-1 flex flex-col items-center justify-center gap-1.5 rounded-xl border transition-all cursor-pointer shrink-0 text-slate-200 font-medium"
+                    [class.bg-emerald-900/30]="selectedOrigin() === origin.id"
+                    [class.border-emerald-500]="selectedOrigin() === origin.id"
+                    [class.border-slate-600]="selectedOrigin() !== origin.id"
+                    [class.bg-slate-800/40]="selectedOrigin() !== origin.id"
+                    [class.hover:border-slate-500]="selectedOrigin() !== origin.id"
+                  >
+                    <span class="text-lg leading-none">{{ origin.emoji }}</span>
+                    <span class="bg-slate-700 text-slate-200 text-xs px-2 py-0.5 rounded-md tabular-nums">{{ originCounts()[origin.id] }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- Taxonomische klasse filter -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-sm space-y-2">
+              <h3 class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-1">Taxonomische Klasse</h3>
+              <div class="flex flex-row flex-nowrap gap-1 justify-center">
+                @for (cat of categories; track cat) {
+                  <button
+                    type="button"
+                    (click)="selectedCategory.set(cat)"
+                    [title]="cat === 'Alle klassen' ? 'Alle klassen' : cat"
+                    class="min-h-[4.5rem] px-1.5 py-1 flex flex-col items-center justify-center gap-1.5 rounded-xl border transition-all cursor-pointer shrink-0 text-slate-200 font-medium"
+                    [class.bg-emerald-900/30]="selectedCategory() === cat"
+                    [class.border-emerald-500]="selectedCategory() === cat"
+                    [class.border-slate-600]="selectedCategory() !== cat"
+                    [class.bg-slate-800/40]="selectedCategory() !== cat"
+                    [class.hover:border-slate-500]="selectedCategory() !== cat"
+                  >
+                    @if (cat === 'Alle klassen') {
+                      <span class="text-white text-sm font-medium leading-none">Alle</span>
+                    } @else if (cat === 'Zoogdieren') {
+                      <span class="text-[22px] leading-none">🦊</span>
+                    } @else if (cat === 'Vogels') {
+                      <span class="text-[22px] leading-none">🦅</span>
+                    } @else if (cat === 'Insecten') {
+                      <span class="text-[22px] leading-none">🦋</span>
+                    } @else if (cat === 'Reptielen & Amfibieën') {
+                      <span class="text-[22px] leading-none">🦎</span>
+                    }
+                    <span class="bg-slate-700 text-slate-200 text-xs px-2 py-0.5 rounded-md tabular-nums">{{ categoryCounts()[cat] ?? 0 }}</span>
+                  </button>
+                }
+              </div>
             </div>
 
             <!-- Status filter -->
@@ -73,22 +100,17 @@ import { ApiService, Animal, Observation } from '../../services/api.service';
                 <button
                   type="button"
                   (click)="selectedStatus.set(status.id)"
-                  class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer w-full"
-                  [class.bg-emerald-600]="selectedStatus() === status.id"
+                  class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer w-full text-slate-200"
+                  [class.bg-emerald-900/30]="selectedStatus() === status.id"
+                  [class.border]="selectedStatus() === status.id"
+                  [class.border-emerald-500]="selectedStatus() === status.id"
                   [class.text-white]="selectedStatus() === status.id"
-                  [class.text-gray-600]="selectedStatus() !== status.id"
-                  [class.dark:text-gray-300]="selectedStatus() !== status.id"
-                  [class.hover:bg-gray-100]="selectedStatus() !== status.id"
-                  [class.dark:hover:bg-gray-700]="selectedStatus() !== status.id"
+                  [class.hover:bg-slate-700/40]="selectedStatus() !== status.id"
                 >
                   <span>{{ status.label }}</span>
-                  <span class="tabular-nums ml-1 px-1 py-0.5 rounded text-[10px] font-semibold"
-                    [class.bg-emerald-500]="selectedStatus() === status.id"
+                  <span class="bg-slate-700 text-slate-200 text-xs px-2 py-0.5 rounded-md tabular-nums"
+                    [class.bg-emerald-600]="selectedStatus() === status.id"
                     [class.text-white]="selectedStatus() === status.id"
-                    [class.bg-gray-100]="selectedStatus() !== status.id"
-                    [class.dark:bg-gray-700]="selectedStatus() !== status.id"
-                    [class.text-gray-500]="selectedStatus() !== status.id"
-                    [class.dark:text-gray-400]="selectedStatus() !== status.id"
                   >{{ getStatusCount(status.id) }}</span>
                 </button>
               }
@@ -101,22 +123,17 @@ import { ApiService, Animal, Observation } from '../../services/api.service';
                 <button
                   type="button"
                   (click)="selectedRarity.set(r.id)"
-                  class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer w-full"
-                  [class.bg-emerald-600]="selectedRarity() === r.id"
+                  class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer w-full text-slate-200"
+                  [class.bg-emerald-900/30]="selectedRarity() === r.id"
+                  [class.border]="selectedRarity() === r.id"
+                  [class.border-emerald-500]="selectedRarity() === r.id"
                   [class.text-white]="selectedRarity() === r.id"
-                  [class.text-gray-600]="selectedRarity() !== r.id"
-                  [class.dark:text-gray-300]="selectedRarity() !== r.id"
-                  [class.hover:bg-gray-100]="selectedRarity() !== r.id"
-                  [class.dark:hover:bg-gray-700]="selectedRarity() !== r.id"
+                  [class.hover:bg-slate-700/40]="selectedRarity() !== r.id"
                 >
                   <span>{{ r.label }}</span>
-                  <span class="tabular-nums ml-1 px-1 py-0.5 rounded text-[10px] font-semibold"
-                    [class.bg-emerald-500]="selectedRarity() === r.id"
+                  <span class="bg-slate-700 text-slate-200 text-xs px-2 py-0.5 rounded-md tabular-nums"
+                    [class.bg-emerald-600]="selectedRarity() === r.id"
                     [class.text-white]="selectedRarity() === r.id"
-                    [class.bg-gray-100]="selectedRarity() !== r.id"
-                    [class.dark:bg-gray-700]="selectedRarity() !== r.id"
-                    [class.text-gray-500]="selectedRarity() !== r.id"
-                    [class.dark:text-gray-400]="selectedRarity() !== r.id"
                   >{{ getRarityCount(r.id) }}</span>
                 </button>
               }
@@ -124,7 +141,7 @@ import { ApiService, Animal, Observation } from '../../services/api.service';
           </aside>
 
           <!-- Rechter Overzicht (Dierkaarten) -->
-          <div class="lg:col-span-3">
+          <div>
             <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
               @for (animal of filteredAnimals(); track animal.id) {
                 <div 
@@ -298,13 +315,13 @@ import { ApiService, Animal, Observation } from '../../services/api.service';
                   }
 
                   <!-- Waarnemingen tijdlijn -->
-                  @if (detailObservations().length > 0) {
+                  @if (filteredDetailObservations().length > 0) {
                     <div class="space-y-3">
                       <h4 class="text-sm font-bold text-emerald-900 dark:text-emerald-400 flex items-center gap-2">
                         <span>📸</span> Alle Waarnemingen
-                        <span class="ml-1 text-xs font-normal text-gray-400">({{ detailObservations().length }})</span>
+                        <span class="ml-1 text-xs font-normal text-gray-400">({{ filteredDetailObservations().length }})</span>
                       </h4>
-                      @for (obs of detailObservations(); track obs.id) {
+                      @for (obs of filteredDetailObservations(); track obs.id) {
                         <div class="bg-emerald-50/60 dark:bg-emerald-900/20 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/50 overflow-hidden flex flex-col sm:flex-row items-stretch">
                             <img
                               [src]="'http://localhost:8000' + (obs.thumbnail_path ?? obs.image_path)"
@@ -315,7 +332,7 @@ import { ApiService, Animal, Observation } from '../../services/api.service';
                               @if (obs.is_wild) {
                                 <span class="inline-flex w-fit items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400">🌿 In het wild</span>
                               } @else {
-                                <span class="inline-flex w-fit items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-400">🏛️ Dierentuin/opvang</span>
+                                <span class="inline-flex w-fit items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-400">🦁 In de dierentuin</span>
                               }
                               <div class="flex flex-col gap-1">
                                 <p class="tabular-nums"><strong>Datum:</strong> {{ obs.timestamp | date:'dd-MM-yyyy HH:mm:ss' }}</p>
@@ -394,6 +411,9 @@ export class CodexComponent implements OnInit {
   private apiService = inject(ApiService);
   private route = inject(ActivatedRoute);
 
+  /** Zelfde host als de dierkaarten: `http://localhost:8000` + image_path / image_url. */
+  protected readonly backendUrl = 'http://localhost:8000';
+
   protected readonly animals = signal<Animal[]>([]);
   protected readonly loading = signal<boolean>(true);
   // Bijhouden welke afbeeldingen niet geladen kunnen worden → toon categorie-emoji als fallback
@@ -403,6 +423,13 @@ export class CodexComponent implements OnInit {
   
   protected readonly categories = ['Alle klassen', 'Zoogdieren', 'Vogels', 'Insecten', 'Reptielen & Amfibieën'];
   protected readonly selectedCategory = signal<string>('Alle klassen');
+
+  protected readonly origins = [
+    { id: 'all' as const, emoji: '🌍', title: 'Alle' },
+    { id: 'wild' as const, emoji: '🌿', title: 'In het wild' },
+    { id: 'zoo' as const, emoji: '🦁', title: 'In de dierentuin' },
+  ];
+  protected readonly selectedOrigin = signal<'all' | 'wild' | 'zoo'>('all');
 
   protected readonly statuses = [
     { id: 'all', label: 'Alles' },
@@ -416,11 +443,21 @@ export class CodexComponent implements OnInit {
     { id: 'Bedreigd',      label: '⚠️ Bedreigd' },
     { id: 'Zeldzaam',      label: '🟠 Zeldzaam' },
     { id: 'Vrij algemeen', label: '🟡 Vrij algemeen' },
+    { id: 'Algemeen',      label: '🟢 Algemeen' },
   ];
   protected readonly selectedRarity = signal<string>('all');
 
   protected readonly searchQuery = signal<string>('');
   protected readonly selectedAnimal = signal<Animal | null>(null);
+
+  /** Waarnemingen in de detail-modal, gefilterd op actieve herkomst */
+  protected readonly filteredDetailObservations = computed(() => {
+    const origin = this.selectedOrigin();
+    const list = this.detailObservations();
+    if (origin === 'all') return list;
+    if (origin === 'wild') return list.filter((o) => o.is_wild);
+    return list.filter((o) => !o.is_wild);
+  });
 
   private pendingSpeciesId: number | null = null;
 
@@ -470,6 +507,28 @@ export class CodexComponent implements OnInit {
     );
   }
 
+  private matchesOrigin(animal: Animal): boolean {
+    const origin = this.selectedOrigin();
+    if (origin === 'all') return true;
+    const latest = animal.latest_observation;
+    if (!latest) return false;
+    return origin === 'wild' ? latest.is_wild : !latest.is_wild;
+  }
+
+  /** Basislijst voor herkomstcounts: alles BEHALVE herkomstfilter */
+  private baseForOrigin = computed(() => {
+    let list = this.animals();
+    const cat    = this.selectedCategory();
+    const status = this.selectedStatus();
+    const rarity = this.selectedRarity();
+    const query  = this.searchQuery().toLowerCase().trim();
+    if (cat !== 'Alle klassen')        list = list.filter(a => a.category === cat);
+    if (status === 'discovered')       list = list.filter(a => !!a.latest_observation);
+    if (status === 'undiscovered')     list = list.filter(a => !a.latest_observation);
+    if (rarity !== 'all')              list = list.filter(a => a.rarity === rarity);
+    return this.applySearch(list, query);
+  });
+
   /** Basislijst voor categoriecounts: alles BEHALVE categoriefilter */
   private baseForCategory = computed(() => {
     let list = this.animals();
@@ -479,6 +538,7 @@ export class CodexComponent implements OnInit {
     if (status === 'discovered')   list = list.filter(a => !!a.latest_observation);
     if (status === 'undiscovered') list = list.filter(a => !a.latest_observation);
     if (rarity !== 'all')          list = list.filter(a => a.rarity === rarity);
+    list = list.filter((a) => this.matchesOrigin(a));
     return this.applySearch(list, query);
   });
 
@@ -490,6 +550,7 @@ export class CodexComponent implements OnInit {
     const query  = this.searchQuery().toLowerCase().trim();
     if (cat !== 'Alle klassen')   list = list.filter(a => a.category === cat);
     if (rarity !== 'all')         list = list.filter(a => a.rarity === rarity);
+    list = list.filter((a) => this.matchesOrigin(a));
     return this.applySearch(list, query);
   });
 
@@ -502,7 +563,22 @@ export class CodexComponent implements OnInit {
     if (cat !== 'Alle klassen')        list = list.filter(a => a.category === cat);
     if (status === 'discovered')       list = list.filter(a => !!a.latest_observation);
     if (status === 'undiscovered')     list = list.filter(a => !a.latest_observation);
+    list = list.filter((a) => this.matchesOrigin(a));
     return this.applySearch(list, query);
+  });
+
+  /** Aantallen per herkomstfilter-optie */
+  protected originCounts = computed(() => {
+    const base = this.baseForOrigin();
+    let wild = 0;
+    let zoo = 0;
+    for (const a of base) {
+      const latest = a.latest_observation;
+      if (!latest) continue;
+      if (latest.is_wild) wild++;
+      else zoo++;
+    }
+    return { all: base.length, wild, zoo };
   });
 
   /** Aantallen per categoriefilter-optie */
@@ -542,6 +618,7 @@ export class CodexComponent implements OnInit {
     if (status === 'discovered')       list = list.filter(a => !!a.latest_observation);
     if (status === 'undiscovered')     list = list.filter(a => !a.latest_observation);
     if (rarity !== 'all')              list = list.filter(a => a.rarity === rarity);
+    list = list.filter((a) => this.matchesOrigin(a));
     list = this.applySearch(list, query);
 
     return [...list].sort((a, b) => a.dutch_name.localeCompare(b.dutch_name));

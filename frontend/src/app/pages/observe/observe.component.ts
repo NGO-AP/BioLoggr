@@ -242,8 +242,8 @@ const DEFAULT_LON = 4.4;
                   ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400'
                   : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500'"
               >
-                <span class="text-2xl">🏛️</span>
-                <span>Dierentuin/Opvang</span>
+                <span class="text-2xl">🦁</span>
+                <span>In de dierentuin</span>
               </button>
             </div>
           </div>
