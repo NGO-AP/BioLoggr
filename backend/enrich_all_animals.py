@@ -1,8 +1,8 @@
 """
-enrich_zoo.py — Verrijk generieke dierbeschrijvingen via de Nederlandstalige Wikipedia API.
+enrich_all_animals.py — Verrijk alle dierbeschrijvingen via de Nederlandstalige Wikipedia API.
 
 Gebruik (vanuit projectroot):
-    python backend/enrich_zoo.py
+    python backend/enrich_all_animals.py
 """
 
 import os
@@ -18,19 +18,12 @@ from sqlmodel import Session, select
 
 from backend.database import engine
 from backend.models import Animal
-from backend.seed import ZOO_DEFAULT_DESCRIPTION
 
 WIKI_API_URL = "https://nl.wikipedia.org/w/api.php"
 BATCH_COMMIT_SIZE = 50
 MAX_DESCRIPTION_CHARS = 400
 MAX_SENTENCES = 3
 SLEEP_SECONDS = 0.2
-
-
-def needs_enrichment(description: str) -> bool:
-    if len(description) < 60:
-        return True
-    return description == ZOO_DEFAULT_DESCRIPTION
 
 
 def truncate_for_ui(text: str) -> str:
@@ -84,12 +77,11 @@ def fetch_wikipedia_extract(title: str) -> str | None:
 def main() -> None:
     with Session(engine) as session:
         animals = session.exec(select(Animal)).all()
-        to_enrich = [a for a in animals if needs_enrichment(a.description)]
 
-        print(f"Te verrijken: {len(to_enrich)} van {len(animals)} dieren")
+        print(f"Te verrijken: {len(animals)} dieren")
 
         updated_since_commit = 0
-        for animal in to_enrich:
+        for animal in animals:
             try:
                 extract = fetch_wikipedia_extract(animal.dutch_name)
                 if not extract:
