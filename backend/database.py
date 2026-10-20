@@ -37,6 +37,7 @@ def init_db():
                 ("aperture", "REAL"),
                 ("focal_length", "REAL"),
                 ("shutter_speed", "TEXT"),
+                ("camera_model", "TEXT"),
             ):
                 if obs_cols and col_name not in obs_cols:
                     cur2.execute(f"ALTER TABLE observation ADD COLUMN {col_name} {col_def}")

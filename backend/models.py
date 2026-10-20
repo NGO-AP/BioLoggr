@@ -33,6 +33,7 @@ class Observation(SQLModel, table=True):
     aperture: Optional[float] = None
     focal_length: Optional[float] = None
     shutter_speed: Optional[str] = None
+    camera_model: str | None = Field(default=None)
 
     animal: Optional[Animal] = Relationship(back_populates="observations")
 

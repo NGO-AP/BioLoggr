@@ -17,6 +17,7 @@ export interface Observation {
   aperture?: number | null;
   focal_length?: number | null;
   shutter_speed?: string | null;
+  camera_model?: string | null;
 }
 
 export interface Animal {

@@ -342,19 +342,6 @@ const DEFAULT_LON = 4.4;
             </p>
           </div>
 
-          <!-- Notities -->
-          <div class="space-y-2">
-            <label for="notes" class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Notities / Waarnemingdetails</label>
-            <textarea
-              id="notes"
-              rows="3"
-              [value]="notes()"
-              (input)="onNotesChange($event)"
-              placeholder="Bijv. Gezien bij de vijver in het bos, rond 14:00 uur..."
-              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 p-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-            ></textarea>
-          </div>
-
           <!-- Submit -->
           <button
             type="button"
@@ -388,7 +375,6 @@ export class ObserveComponent implements OnDestroy {
 
   protected readonly selectedFile = signal<File | null>(null);
   protected readonly previewUrl = signal<string | null>(null);
-  protected readonly notes = signal<string>('');
   protected readonly isUploading = signal<boolean>(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly result = signal<ObservationResult | null>(null);
@@ -493,11 +479,6 @@ export class ObserveComponent implements OnDestroy {
     }
   }
 
-  protected onNotesChange(event: Event): void {
-    const textarea = event.target as HTMLTextAreaElement;
-    this.notes.set(textarea.value);
-  }
-
   protected selectSuggestion(s: Suggestion): void {
     this.selectedSuggestion.set(
       this.selectedSuggestion()?.animal_id === s.animal_id ? null : s
@@ -517,7 +498,6 @@ export class ObserveComponent implements OnDestroy {
 
     const formData = new FormData();
     formData.append('file', file);
-    if (this.notes()) formData.append('notes', this.notes());
 
     // Gebruik geselecteerde suggestie (of suggestie 1 als AI klaar was)
     const confirmed = this.selectedSuggestion();
@@ -555,7 +535,6 @@ export class ObserveComponent implements OnDestroy {
   protected resetForm(): void {
     this.selectedFile.set(null);
     this.previewUrl.set(null);
-    this.notes.set('');
     this.result.set(null);
     this.errorMessage.set(null);
     this.isWild.set(true);

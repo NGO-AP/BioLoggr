@@ -19,15 +19,6 @@ describe('ObserveComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should update notes signal on input change', () => {
-    const textarea = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
-    textarea.value = 'Gezien bij de vijver';
-    textarea.dispatchEvent(new Event('input'));
-    fixture.detectChanges();
-
-    expect((component as any).notes()).toBe('Gezien bij de vijver');
-  });
-
   it('should handle file selection and generate preview', () => {
     const file = new File(['dummy content'], 'test.png', { type: 'image/png' });
     const event = {

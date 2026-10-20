@@ -362,6 +362,11 @@ import { ApiService, Animal, Observation } from '../../services/api.service';
                                       {{ obs.shutter_speed }}
                                     </span>
                                   }
+                                  @if (obs.camera_model) {
+                                    <span class="rounded-lg bg-white/70 dark:bg-gray-900/40 px-2 py-1 border border-emerald-200/80 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-200">
+                                      {{ obs.camera_model }}
+                                    </span>
+                                  }
                                 </div>
                               }
                               @if (obs.notes) {
@@ -645,7 +650,8 @@ export class CodexComponent implements OnInit {
       obs.iso != null ||
       obs.aperture != null ||
       obs.focal_length != null ||
-      (obs.shutter_speed != null && obs.shutter_speed !== '')
+      (obs.shutter_speed != null && obs.shutter_speed !== '') ||
+      (obs.camera_model != null && obs.camera_model !== '')
     );
   }
 

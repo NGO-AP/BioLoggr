@@ -109,6 +109,32 @@ def _format_shutter_speed(exposure_time) -> str | None:
     return f"1/{denom}"
 
 
+def _exif_str(value) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, bytes):
+        try:
+            text = value.decode("utf-8", errors="ignore")
+        except Exception:
+            return None
+    else:
+        text = str(value)
+    text = text.strip().strip("\x00")
+    return text or None
+
+
+def _combine_camera_make_model(make: str | None, model: str | None) -> str | None:
+    if not make and not model:
+        return None
+    if make and not model:
+        return make
+    if model and not make:
+        return model
+    if model.lower().startswith(make.lower()):
+        return model
+    return f"{make} {model}"
+
+
 def _parse_exif_datetime_original(raw: str | None) -> datetime | None:
     if not raw or not isinstance(raw, str):
         return None
@@ -128,6 +154,7 @@ def _extract_photo_exif(image_bytes: bytes) -> dict:
         "aperture": None,
         "focal_length": None,
         "shutter_speed": None,
+        "camera_model": None,
         "timestamp": datetime.now(),
     }
     try:
@@ -154,6 +181,10 @@ def _extract_photo_exif(image_bytes: bytes) -> dict:
         focal_length = _rational_to_float(merged.get(_EXIF_TAG_NAME_TO_ID.get("FocalLength", 37386)))
         shutter_speed = _format_shutter_speed(merged.get(_EXIF_TAG_NAME_TO_ID.get("ExposureTime", 33434)))
 
+        make = _exif_str(merged.get(_EXIF_TAG_NAME_TO_ID.get("Make", 271)))
+        model = _exif_str(merged.get(_EXIF_TAG_NAME_TO_ID.get("Model", 272)))
+        camera_model = _combine_camera_make_model(make, model)
+
         dt_original = merged.get(_EXIF_TAG_NAME_TO_ID.get("DateTimeOriginal", 36867))
         if dt_original is None:
             dt_original = merged.get(_EXIF_TAG_NAME_TO_ID.get("DateTime", 306))
@@ -173,6 +204,7 @@ def _extract_photo_exif(image_bytes: bytes) -> dict:
             "aperture": aperture,
             "focal_length": focal_length,
             "shutter_speed": shutter_speed,
+            "camera_model": camera_model,
             "timestamp": capture_time,
         }
     except Exception:
@@ -220,6 +252,7 @@ def _obs_to_dict(obs: "Observation") -> dict:
         "aperture": obs.aperture,
         "focal_length": obs.focal_length,
         "shutter_speed": obs.shutter_speed,
+        "camera_model": obs.camera_model,
     }
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
@@ -506,6 +539,7 @@ async def create_observation(
         aperture=photo_exif["aperture"],
         focal_length=photo_exif["focal_length"],
         shutter_speed=photo_exif["shutter_speed"],
+        camera_model=photo_exif["camera_model"],
     )
     
     # Compute unlocked badges BEFORE saving the new observation
