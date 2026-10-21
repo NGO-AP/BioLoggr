@@ -43,6 +43,10 @@ image = (
         "apt-get install -y --no-install-recommends nodejs",
         "rm -rf /var/lib/apt/lists/*",
     )
+    .pip_install(
+        "sqlalchemy-libsql>=0.1.0",
+        "libsql-experimental>=0.0.53",
+    )
     .pip_install_from_requirements(
         str(ROOT / "backend" / "requirements.txt"),
         extra_index_url="https://download.pytorch.org/whl/cpu",
@@ -50,17 +54,19 @@ image = (
     .env({"PYTHONPATH": "/app", "PYTHONUNBUFFERED": "1"})
     .workdir("/app")
     .add_local_dir(
-        str(ROOT / "backend"),
-        remote_path="/app/backend",
-        ignore=["uploads/*", "__pycache__", "**/__pycache__"],
-    )
-    .add_local_dir(
         str(ROOT / "frontend"),
         remote_path="/build/frontend",
+        copy=True,
         ignore=["node_modules", "dist", ".angular", "test-results", "playwright-report"],
     )
+    .run_commands("cd /build/frontend && npm ci && npm run build")
+    .add_local_dir(
+        str(ROOT / "backend"),
+        remote_path="/app/backend",
+        copy=True,
+        ignore=["uploads/*", "__pycache__", "**/__pycache__"],
+    )
     .run_commands(
-        "cd /build/frontend && npm ci && npm run build",
         "mkdir -p /app/backend/static",
         "cp -r /build/frontend/dist/frontend/browser/. /app/backend/static/",
         r"find /app/backend/static -type f -name '*.js' "

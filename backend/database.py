@@ -12,6 +12,10 @@ LOCAL_SQLITE_URL = "sqlite:///biologgr.db"
 
 def _turso_credentials() -> tuple[str, str] | None:
     url = (os.getenv("TURSO_DATABASE_URL") or "").strip()
+    if not url:
+        database_url = (os.getenv("DATABASE_URL") or "").strip()
+        if database_url.startswith("libsql://"):
+            url = database_url
     token = (os.getenv("TURSO_AUTH_TOKEN") or "").strip()
     if url and token:
         return url, token
@@ -35,6 +39,11 @@ def _create_db_engine():
             ) from exc
 
     database_url = (os.getenv("DATABASE_URL") or LOCAL_SQLITE_URL).strip()
+    if database_url.startswith("libsql://"):
+        raise RuntimeError(
+            "DATABASE_URL uses libsql://; set TURSO_AUTH_TOKEN (and optionally "
+            "TURSO_DATABASE_URL) for Turso, or use a sqlite:/// URL locally."
+        )
     connect_args: dict = {}
     if database_url.startswith("sqlite"):
         connect_args["check_same_thread"] = False
