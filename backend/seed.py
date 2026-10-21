@@ -29,25 +29,25 @@ ZOO_DEFAULT_DESCRIPTION = (
     "Een exotische diersoort die veel voorkomt in Europese dierentuinen, aquaria of volières."
 )
 
-DEFAULT_BADGES = [
-    Badge(
-        name="Eerste Waarneming",
-        description="Registreer je allereerste dier in de codex.",
-        icon="🏆",
-        unlocked_at=None,
-    ),
-    Badge(
-        name="Nachtvlinder",
-        description="Vind een zeldzame of bedreigde soort.",
-        icon="🌙",
-        unlocked_at=None,
-    ),
-    Badge(
-        name="Boswachter",
-        description="Ontdek minstens 5 verschillende soorten.",
-        icon="🌲",
-        unlocked_at=None,
-    ),
+DEFAULT_BADGES: list[dict] = [
+    {
+        "name": "Eerste Waarneming",
+        "description": "Registreer je allereerste dier in de codex.",
+        "icon": "🏆",
+        "unlocked_at": None,
+    },
+    {
+        "name": "Nachtvlinder",
+        "description": "Vind een zeldzame of bedreigde soort.",
+        "icon": "🌙",
+        "unlocked_at": None,
+    },
+    {
+        "name": "Boswachter",
+        "description": "Ontdek minstens 5 verschillende soorten.",
+        "icon": "🌲",
+        "unlocked_at": None,
+    },
 ]
 
 
@@ -163,10 +163,10 @@ def seed_species(session: Session) -> tuple[int, int]:
 
 def seed_badges(session: Session) -> None:
     """Voegt ontbrekende badges toe (geen duplicaten)."""
-    existing_names = {b.name for b in session.exec(select(Badge)).all()}
-    for badge in DEFAULT_BADGES:
-        if badge.name not in existing_names:
-            session.add(badge)
+    existing_names = set(session.exec(select(Badge.name)).all())
+    for spec in DEFAULT_BADGES:
+        if spec["name"] not in existing_names:
+            session.add(Badge(**spec))
     session.commit()
 
 
