@@ -500,7 +500,7 @@ async def create_observation(
         raise
     except Exception:
         raise HTTPException(status_code=422, detail="Afbeelding kon niet worden verwerkt.")
-    commit_uploads_if_configured()
+    await commit_uploads_if_configured()
     # Soort bepalen: gebruiker-keuze > BioCLIP > mock-fallback
     if animal_id is not None:
         animal = session.get(Animal, animal_id)
@@ -584,7 +584,7 @@ def get_observations(session: Session = Depends(get_session)):
 
 
 @app.delete("/api/observations/{observation_id}")
-def delete_observation(observation_id: int, session: Session = Depends(get_session)):
+async def delete_observation(observation_id: int, session: Session = Depends(get_session)):
     obs = session.get(Observation, observation_id)
     if not obs:
         raise HTTPException(status_code=404, detail="Waarneming niet gevonden")
@@ -595,7 +595,7 @@ def delete_observation(observation_id: int, session: Session = Depends(get_sessi
             fs_path = os.path.join(UPLOAD_DIR, os.path.basename(url_path))
             if os.path.exists(fs_path):
                 os.remove(fs_path)
-    commit_uploads_if_configured()
+    await commit_uploads_if_configured()
 
     session.delete(obs)
     session.commit()

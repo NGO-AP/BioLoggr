@@ -84,6 +84,7 @@ image = (
     memory=8192,
     timeout=60 * 10,
     scaledown_window=60 * 10,
+    container_idle_timeout=1800,
     min_containers=0,
 )
 @modal.concurrent(max_inputs=20)
@@ -96,7 +97,7 @@ def web():
 
     from backend.upload_storage import register_upload_commit
 
-    register_upload_commit(images_volume.commit)
+    register_upload_commit(images_volume.commit.aio)
 
     from backend.seed import run_seed
 
