@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { shareReplay, tap } from 'rxjs/operators';
 
 export interface Observation {
   id: number;
@@ -81,9 +82,22 @@ export interface Stats {
 export class ApiService {
   private http = inject(HttpClient);
   private baseUrl = 'http://localhost:8000/api';
+  private codexCache$: Observable<Animal[]> | null = null;
 
-  getCodex(): Observable<Animal[]> {
-    return this.http.get<Animal[]>(`${this.baseUrl}/codex`);
+  getCodex(options?: { refresh?: boolean }): Observable<Animal[]> {
+    if (options?.refresh) {
+      this.invalidateCodexCache();
+    }
+    if (!this.codexCache$) {
+      this.codexCache$ = this.http.get<Animal[]>(`${this.baseUrl}/codex`).pipe(
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
+    }
+    return this.codexCache$;
+  }
+
+  invalidateCodexCache(): void {
+    this.codexCache$ = null;
   }
 
   getAnimalDetail(id: number): Observable<Animal> {
@@ -114,11 +128,15 @@ export class ApiService {
     }
     if (animalId !== null) params.push(`animal_id=${animalId}`);
     if (matchScore !== null) params.push(`match_score=${matchScore}`);
-    return this.http.post<any>(`${this.baseUrl}/observations?${params.join('&')}`, formData);
+    return this.http.post<any>(`${this.baseUrl}/observations?${params.join('&')}`, formData).pipe(
+      tap(() => this.invalidateCodexCache()),
+    );
   }
 
   deleteObservation(id: number): Observable<{ ok: boolean; deleted_id: number }> {
-    return this.http.delete<{ ok: boolean; deleted_id: number }>(`${this.baseUrl}/observations/${id}`);
+    return this.http
+      .delete<{ ok: boolean; deleted_id: number }>(`${this.baseUrl}/observations/${id}`)
+      .pipe(tap(() => this.invalidateCodexCache()));
   }
 
   getBadges(): Observable<Badge[]> {

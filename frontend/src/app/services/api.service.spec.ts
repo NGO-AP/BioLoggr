@@ -42,6 +42,20 @@ describe('ApiService', () => {
     request.flush(dummyAnimals);
   });
 
+  it('should reuse cached codex on subsequent getCodex calls', () => {
+    const dummyAnimals: Animal[] = [
+      { id: 1, scientific_name: 'Vulpes vulpes', dutch_name: 'Rode Vos', category: 'Zoogdieren', rarity: 'Common', description: 'Fox' },
+    ];
+
+    service.getCodex().subscribe();
+    httpMock.expectOne('http://localhost:8000/api/codex').flush(dummyAnimals);
+
+    service.getCodex().subscribe((animals) => {
+      expect(animals).toEqual(dummyAnimals);
+    });
+    httpMock.expectNone('http://localhost:8000/api/codex');
+  });
+
   it('should fetch observations via GET /api/observations', () => {
     const dummyObs: Observation[] = [
       { id: 1, animal_id: 1, latitude: 52.0, longitude: 5.0, image_path: '/uploads/test.jpg', timestamp: '2026-10-07T00:00:00Z', confidence: 0.95 }

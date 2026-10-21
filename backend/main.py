@@ -6,6 +6,7 @@ from typing import List, Optional
 from fastapi import FastAPI, Depends, File, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 from PIL import Image, ImageOps, ExifTags
 
@@ -237,6 +238,12 @@ def _compress_image(image_bytes: bytes, filename_base: str) -> tuple[str, str, s
     return main_fs, thumb_fs, f"/uploads/{main_name}", f"/uploads/{thumb_name}"
 
 
+def _latest_observation(observations: list[Observation]) -> Observation | None:
+    if not observations:
+        return None
+    return max(observations, key=lambda o: o.timestamp)
+
+
 def _obs_to_dict(obs: "Observation") -> dict:
     return {
         "id": obs.id,
@@ -420,12 +427,12 @@ async def identify_image(file: UploadFile = File(...)):
 
 @app.get("/api/codex")
 def get_codex(session: Session = Depends(get_session)):
-    animals = session.exec(select(Animal)).all()
+    animals = session.exec(
+        select(Animal).options(selectinload(Animal.observations))
+    ).all()
     result = []
     for animal in animals:
-        statement = select(Observation).where(Observation.animal_id == animal.id).order_by(Observation.timestamp.desc())
-        latest_obs = session.exec(statement).first()
-        
+        latest_obs = _latest_observation(list(animal.observations))
         result.append({
             "id": animal.id,
             "scientific_name": animal.scientific_name,
@@ -441,16 +448,15 @@ def get_codex(session: Session = Depends(get_session)):
 
 @app.get("/api/codex/{animal_id}")
 def get_animal_detail(animal_id: int, session: Session = Depends(get_session)):
-    animal = session.get(Animal, animal_id)
+    animal = session.exec(
+        select(Animal)
+        .where(Animal.id == animal_id)
+        .options(selectinload(Animal.observations))
+    ).first()
     if not animal:
         raise HTTPException(status_code=404, detail="Animal not found")
 
-    all_obs = session.exec(
-        select(Observation)
-        .where(Observation.animal_id == animal.id)
-        .order_by(Observation.timestamp.desc())
-    ).all()
-
+    all_obs = sorted(animal.observations, key=lambda o: o.timestamp, reverse=True)
     latest_obs = all_obs[0] if all_obs else None
 
     return {
