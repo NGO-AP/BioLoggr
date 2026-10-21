@@ -1,5 +1,6 @@
 # Environment & secrets (zero-leak)
 .env*
+!.env.example
 .env.local
 .env.*.local
 *.pem
@@ -15,11 +16,14 @@ __pycache__/
 venv/
 *.egg-info/
 
-# Local database (optional local copies; root DB may be tracked for dev seeds)
-# biologgr.db
+# Local database & user uploads (keep on disk, not in git)
+biologgr.db
+backend/uploads/*
+!backend/uploads/.gitkeep
 
 # Node / frontend build artifacts (see also frontend/.gitignore)
 node_modules/
+frontend/test-results/
 
 # OS
 .DS_Store
