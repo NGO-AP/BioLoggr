@@ -125,7 +125,7 @@ De frontend is gebouwd met **Angular 22** (standalone components, signals, zonel
 
 ### Observaties & logboek
 
-- Foto’s worden lokaal opgeslagen (`backend/uploads/`), geoptimaliseerd als WebP met thumbnail.
+- Foto’s worden opgeslagen onder `backend/uploads/` (lokaal) of op een **Modal Volume** in productie, geoptimaliseerd als WebP met thumbnail.
 - Waarnemingen bevatten tijdstip, coördinaten, notities, AI-confidence en volledige EXIF-snapshot.
 - Overzicht op de kaart en gekoppeld aan codex-detail (alle observaties per soort).
 
@@ -140,7 +140,8 @@ De frontend is gebouwd met **Angular 22** (standalone components, signals, zonel
 | **Kaart** | Leaflet | Interactieve waarnemingskaart |
 | **EXIF (client)** | exifr | Aanvullende metadata in de browser |
 | **Backend** | Python 3.11+, FastAPI, Uvicorn | REST JSON API |
-| **Data** | SQLModel, SQLite (`biologgr.db`) | ORM + lokale database |
+| **Data** | SQLModel, SQLite / [Turso](https://turso.tech) (libSQL) | ORM; lokaal `biologgr.db`, cloud via Turso |
+| **Hosting** | [Modal.com](https://modal.com) | Serverless FastAPI + Angular + BioCLIP |
 | **Beeld** | Pillow, piexif | Validatie, EXIF, WebP-conversie |
 | **AI** | PyTorch, open_clip, BioCLIP | Zero-shot soortidentificatie |
 | **Tests** | pytest, Karma/Jasmine, Playwright | Backend-, unit- en e2e-tests |
@@ -162,8 +163,7 @@ Biologgr/
 │   │   ├── bioclip_service.py  # BioCLIP-load & predict
 │   │   └── badge_service.py    # 67 badges + 9 uitdagingen
 │   └── tests/
-├── Dockerfile                  # Multi-stage: Angular build + FastAPI (HF Spaces)
-├── start.sh                    # seed + Uvicorn op poort 7860
+├── modal_app.py                # Modal deploy: image build, Volume, ASGI
 └── frontend/
     └── src/app/
         ├── pages/              # codex, observe, map, badges
@@ -172,31 +172,59 @@ Biologgr/
 
 ---
 
-## Deployen op Hugging Face Spaces (aanbevolen)
+## Deployen op Modal.com (aanbevolen)
 
-De **cloud-build is de happy path** voor BioLoggr: op Linux/Docker installeren alle dependencies out-of-the-box, inclusief **`sqlalchemy-libsql`** (Turso) en de volledige **BioCLIP-stack** (`torch`, `torchvision`, `open-clip-torch`, Pillow). In de `Dockerfile` worden **CPU-geoptimaliseerde PyTorch-wheels** gebruikt — passend bij typische Spaces zonder GPU en met een beheersbare image-grootte.
+Productie draait als één **Modal Web App** ([`modal_app.py`](modal_app.py)): de image bouwt de Angular-frontend, installeert FastAPI + **PyTorch CPU** + BioCLIP, en serveert alles via `@modal.asgi_app()`.
 
-1. Maak een **Docker Space** op [Hugging Face Spaces](https://huggingface.co/spaces) en koppel deze repository.
-2. Zet in **Settings → Variables and secrets** (zie ook [`.env.example`](.env.example)):
-   - `TURSO_DATABASE_URL`
-   - `TURSO_AUTH_TOKEN`
-3. Zorg dat de Space-`README.md` (HF-metadata) minimaal bevat: `sdk: docker` en `app_port: 7860`.
+| Component | Inrichting |
+|-----------|------------|
+| **Database** | Turso via secret `biologgr-turso` (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`) |
+| **Foto’s** | Persistent **Modal Volume** `biologgr-images`, gemount op `/app/backend/uploads` — dezelfde map als FastAPI’s `GET /uploads/...` |
+| **Codex-seed** | Bij containerstart: [`backend/seed.py`](backend/seed.py) (upsert soorten in Turso) |
+| **Static SPA** | Gebouwde Angular-app in `backend/static/` (same-origin API, geen CORS nodig) |
 
-Bij start voert [`start.sh`](start.sh) eerst [`backend/seed.py`](backend/seed.py) uit (codex in Turso), daarna **Uvicorn** op `0.0.0.0:7860`. FastAPI serveert de gebouwde Angular-app uit `backend/static/` naast de API.
+### Eenmalige setup
 
-> **Eerste deploy:** de Docker-build kan lang duren door PyTorch en npm; de eerste BioCLIP-modeldownload na start kan enkele minuten kosten.
+```powershell
+pip install modal
+modal token new
+```
+
+Turso-secrets (waarden uit je Turso-dashboard; zie [`.env.example`](.env.example)):
+
+```powershell
+cd "D:\MyProjects\Eigen projecten\Biologgr"
+
+modal secret create biologgr-turso `
+  TURSO_DATABASE_URL="libsql://jouw-db.turso.io" `
+  TURSO_AUTH_TOKEN="jouw-token"
+```
+
+Bestaande secret overschrijven: voeg `--force` toe. Alternatief: `modal secret create biologgr-turso --from-dotenv .env --force` (alleen lokaal, nooit committen).
+
+### Deploy
+
+```powershell
+modal deploy modal_app.py
+```
+
+De CLI toont de publieke URL (`https://…--biologgr-web.modal.run`). Lokaal testen met tijdelijke URL: `modal serve modal_app.py`.
+
+> **Eerste deploy:** image-build (npm, PyTorch, BioCLIP-download) kan **20–40 minuten** duren. Daarna zijn uploads persistent op het volume; na elke upload/delete commit [`modal_app.py`](modal_app.py) het volume zodat andere containers de bestanden zien.
+
+Volume handmatig inspecteren: `modal volume ls` en `modal shell --volume biologgr-images`.
 
 ---
 
 ## Lokaal opstarten
 
-Lokaal draait het project nog steeds prima (SQLite in `biologgr.db`, frontend op poort 4200, API op 8000). Houd er rekening mee dat **`pip install -r backend/requirements.txt` nu ook PyTorch meeneemt** — op **Windows** kan dat **zwaar** zijn (grote download, veel RAM/disk). Voor dagelijks werk kun je een apart venv gebruiken; voor productie en AI in de praktijk is **Hugging Face Spaces** de bedoelde route.
+Lokaal draait het project prima (SQLite in `biologgr.db`, frontend op poort 4200, API op 8000). **`pip install -r backend/requirements.txt` trekt PyTorch mee** — op **Windows** kan dat zwaar zijn. Voor dagelijks werk: apart venv; voor productie + AI: **Modal**.
 
 ### Database & `.env` (vooral Windows)
 
-Turso (`TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN`) is bedoeld voor de **cloud-deploy** op Hugging Face Spaces. **Lokaal op Windows** kun je het `.env`-bestand met die Turso-variabelen het beste **helemaal weglaten** (of ze niet zetten). Zonder die variabelen valt [`backend/database.py`](backend/database.py) automatisch terug op de lokale SQLite-database **`biologgr.db`** in de projectroot — geen extra configuratie nodig.
+Turso (`TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN`) is bedoeld voor **Modal** (via `modal secret`, niet in de image). **Lokaal op Windows** laat je die variabelen het beste **uit** je `.env`. Zonder Turso valt [`backend/database.py`](backend/database.py) terug op **`biologgr.db`** in de projectroot.
 
-Dat voorkomt dat de app de **libSQL-driver** (`sqlalchemy-libsql`) probeert te gebruiken. Op Windows leidt die driver vaak tot **ingewikkelde C++-build- of installatiefouten**; lokaal SQLite werkt zonder Turso stabiel. Zie [`.env.example`](.env.example) alleen als referentie voor Spaces-secrets; kopieer die niet blind naar `.env` tenzij je bewust tegen een remote Turso-database wilt ontwikkelen (bij voorkeur op Linux/macOS).
+Dat voorkomt dat de **libSQL-driver** (`sqlalchemy-libsql`) lokaal moet bouwen. Zie [`.env.example`](.env.example) als referentie voor Turso-waarden; kopieer die niet blind naar `.env` tenzij je bewust tegen Turso wilt ontwikkelen.
 
 ### Vereisten
 
@@ -329,7 +357,7 @@ npm run test:e2e  # Playwright
 
 ## Roadmap (korte blik)
 
-- Cloudopslag voor foto’s (bijv. Cloudflare R2)
+- Cloudopslag voor foto’s via Cloudflare R2 (Modal Volume dekt productie v1)
 - Multi-user accounts en sync
 - PostGIS / geavanceerde geo-analyses
 - Verdere optimalisatie van BioCLIP-inferentie op GPU

@@ -3,6 +3,7 @@ BioLoggr — Modal.com deployment
 
 Serves the FastAPI backend, production Angular static assets, and BioCLIP (CPU).
 Set Modal secret ``biologgr-turso`` with TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.
+User uploads are stored on Modal Volume ``biologgr-images`` (mounted at UPLOADS_MOUNT).
 """
 
 from pathlib import Path
@@ -13,6 +14,9 @@ APP_NAME = "biologgr"
 ROOT = Path(__file__).resolve().parent
 
 turso_secret = modal.Secret.from_name("biologgr-turso")
+images_volume = modal.Volume.from_name("biologgr-images", create_if_missing=True)
+
+UPLOADS_MOUNT = "/app/backend/uploads"
 
 app = modal.App(APP_NAME)
 
@@ -61,7 +65,6 @@ image = (
         "cp -r /build/frontend/dist/frontend/browser/. /app/backend/static/",
         r"find /app/backend/static -type f -name '*.js' "
         r"-exec sed -i 's|http://localhost:8000||g' {} +",
-        "mkdir -p /app/backend/uploads",
     )
     .run_function(_preload_bioclip_weights, timeout=60 * 30)
 )
@@ -70,6 +73,7 @@ image = (
 @app.function(
     image=image,
     secrets=[turso_secret],
+    volumes={UPLOADS_MOUNT: images_volume},
     cpu=4.0,
     memory=8192,
     timeout=60 * 10,
@@ -82,6 +86,12 @@ def web():
     import os
 
     os.chdir("/app")
+    os.makedirs(UPLOADS_MOUNT, exist_ok=True)
+
+    from backend.upload_storage import register_upload_commit
+
+    register_upload_commit(images_volume.commit)
+
     from backend.seed import run_seed
 
     run_seed()

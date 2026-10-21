@@ -14,6 +14,7 @@ from backend.models import Animal, Observation, Badge
 from backend.seed import seed_species, seed_badges
 from backend.services.bioclip_service import bioclip
 from backend.services import badge_service
+from backend.upload_storage import commit_uploads_if_configured
 
 app = FastAPI(title="BioLoggr API", version="1.0.0")
 
@@ -493,6 +494,7 @@ async def create_observation(
         raise
     except Exception:
         raise HTTPException(status_code=422, detail="Afbeelding kon niet worden verwerkt.")
+    commit_uploads_if_configured()
     # Soort bepalen: gebruiker-keuze > BioCLIP > mock-fallback
     if animal_id is not None:
         animal = session.get(Animal, animal_id)
@@ -587,6 +589,7 @@ def delete_observation(observation_id: int, session: Session = Depends(get_sessi
             fs_path = os.path.join(UPLOAD_DIR, os.path.basename(url_path))
             if os.path.exists(fs_path):
                 os.remove(fs_path)
+    commit_uploads_if_configured()
 
     session.delete(obs)
     session.commit()
