@@ -83,8 +83,7 @@ image = (
     cpu=4.0,
     memory=8192,
     timeout=60 * 10,
-    scaledown_window=60 * 10,
-    container_idle_timeout=1800,
+    scaledown_window=1800,
     min_containers=0,
 )
 @modal.concurrent(max_inputs=20)
