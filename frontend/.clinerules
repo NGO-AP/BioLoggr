@@ -1,0 +1,5 @@
+# Frontend Architecture Standards — BioLoggr
+- **Standalone Components**: Alle componenten zijn standalone (`@Component({ standalone: true })`). Geen NgModules.
+- **Control Flow Syntax**: Gebruik uitsluitend de nieuwe ingebouwde control flow syntax (`@if`, `@for` met `track`, `@empty`). Geen `*ngIf` of `*ngFor`.
+- **Reactiviteit & State**: Gebruik Angular Signals (`signal()`, `computed()`, `input()`, `output()`) voor alle state management en reactieve data.
+- **Dependency Injection**: Gebruik altijd de `inject()` functie in plaats van constructor injection.

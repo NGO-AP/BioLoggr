@@ -1,0 +1,16 @@
+fastapi>=0.110.0
+uvicorn>=0.28.0
+python-dotenv>=1.0.0
+sqlalchemy-libsql>=0.1.0
+sqlmodel>=0.0.16
+pydantic>=2.6.0
+python-multipart>=0.0.9
+pillow>=10.2.0
+piexif>=1.1.3
+pytest>=8.0.0
+httpx>=0.27.0
+
+# BioCLIP (Modal/cloud: CPU wheels via modal_app.py --extra-index-url)
+torch>=2.2.0
+torchvision>=0.17.0
+open-clip-torch>=2.24.0
