@@ -10,12 +10,12 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 from PIL import Image, ImageOps, ExifTags
 
+from backend.auth import router as auth_router, verify_admin
 from backend.database import init_db, get_session
 from backend.models import Animal, Observation, Badge
 from backend.seed import seed_species, seed_badges
 from backend.services.bioclip_service import bioclip
 from backend.services import badge_service
-from backend.upload_storage import commit_uploads_if_configured
 
 app = FastAPI(title="BioLoggr API", version="1.0.0")
 
@@ -35,8 +35,10 @@ app.add_middleware(
     allow_origins=_ALLOWED_ORIGINS,
     allow_credentials=False,
     allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type", "Accept"],
+    allow_headers=["Content-Type", "Accept", "Authorization"],
 )
+
+app.include_router(auth_router)
 
 UPLOAD_DIR = "backend/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -410,7 +412,7 @@ def health_check():
         "bioclip": "ready" if bioclip.is_ready else ("loading" if bioclip.is_loading else "unavailable"),
     }
 
-@app.post("/api/identify")
+@app.post("/api/identify", dependencies=[Depends(verify_admin)])
 async def identify_image(file: UploadFile = File(...)):
     """
     Identificeer een soort op basis van een foto.
@@ -472,7 +474,7 @@ def get_animal_detail(animal_id: int, session: Session = Depends(get_session)):
         "all_observations": [_obs_to_dict(o) for o in all_obs],
     }
 
-@app.post("/api/observations")
+@app.post("/api/observations", dependencies=[Depends(verify_admin)])
 async def create_observation(
     file: UploadFile = File(...),
     latitude: Optional[float] = Query(None, description="Latitude of observation"),
@@ -500,7 +502,6 @@ async def create_observation(
         raise
     except Exception:
         raise HTTPException(status_code=422, detail="Afbeelding kon niet worden verwerkt.")
-    await commit_uploads_if_configured()
     # Soort bepalen: gebruiker-keuze > BioCLIP > mock-fallback
     if animal_id is not None:
         animal = session.get(Animal, animal_id)
@@ -583,7 +584,7 @@ def get_observations(session: Session = Depends(get_session)):
     return observations
 
 
-@app.delete("/api/observations/{observation_id}")
+@app.delete("/api/observations/{observation_id}", dependencies=[Depends(verify_admin)])
 async def delete_observation(observation_id: int, session: Session = Depends(get_session)):
     obs = session.get(Observation, observation_id)
     if not obs:
@@ -595,7 +596,6 @@ async def delete_observation(observation_id: int, session: Session = Depends(get
             fs_path = os.path.join(UPLOAD_DIR, os.path.basename(url_path))
             if os.path.exists(fs_path):
                 os.remove(fs_path)
-    await commit_uploads_if_configured()
 
     session.delete(obs)
     session.commit()

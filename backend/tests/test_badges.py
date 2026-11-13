@@ -275,7 +275,7 @@ def test_stats_endpoint(client: TestClient):
 
 # ─── POST /api/observations → newly_unlocked_badges tests ────────────────────
 
-def test_observation_returns_newly_unlocked_badges(client: TestClient, tmp_path):
+def test_observation_returns_newly_unlocked_badges(client: TestClient, auth_headers, tmp_path):
     """First observation should return first_discovery in newly_unlocked_badges."""
     jpeg = _make_jpeg()
     img_file = tmp_path / "test.jpg"
@@ -285,6 +285,7 @@ def test_observation_returns_newly_unlocked_badges(client: TestClient, tmp_path)
         response = client.post(
             "/api/observations?latitude=51.2&longitude=4.4",
             files={"file": ("test.jpg", f, "image/jpeg")},
+            headers=auth_headers,
         )
 
     assert response.status_code == 200
@@ -295,7 +296,7 @@ def test_observation_returns_newly_unlocked_badges(client: TestClient, tmp_path)
     assert "first_discovery" in ids
 
 
-def test_second_observation_does_not_re_unlock_first_discovery(client: TestClient, tmp_path):
+def test_second_observation_does_not_re_unlock_first_discovery(client: TestClient, auth_headers, tmp_path):
     """first_discovery should not appear in newly_unlocked_badges on the second call."""
     jpeg = _make_jpeg()
 
@@ -306,6 +307,7 @@ def test_second_observation_does_not_re_unlock_first_discovery(client: TestClien
             return client.post(
                 "/api/observations",
                 files={"file": ("img.jpg", f, "image/jpeg")},
+                headers=auth_headers,
             )
 
     post_obs()  # First observation — unlocks first_discovery
@@ -315,7 +317,7 @@ def test_second_observation_does_not_re_unlock_first_discovery(client: TestClien
     assert "first_discovery" not in ids
 
 
-def test_badge_progress_updates_after_observation(client: TestClient, tmp_path):
+def test_badge_progress_updates_after_observation(client: TestClient, auth_headers, tmp_path):
     """Progress counters should increase after posting an observation."""
     before = client.get("/api/badges").json()
     first_b = next(b for b in before if b["id"] == "first_discovery")
@@ -325,7 +327,7 @@ def test_badge_progress_updates_after_observation(client: TestClient, tmp_path):
     img = tmp_path / "p.jpg"
     img.write_bytes(jpeg)
     with open(img, "rb") as f:
-        client.post("/api/observations", files={"file": ("p.jpg", f, "image/jpeg")})
+        client.post("/api/observations", files={"file": ("p.jpg", f, "image/jpeg")}, headers=auth_headers)
 
     after = client.get("/api/badges").json()
     first_a = next(b for b in after if b["id"] == "first_discovery")

@@ -125,7 +125,7 @@ De frontend is gebouwd met **Angular 22** (standalone components, signals, zonel
 
 ### Observaties & logboek
 
-- Foto’s worden opgeslagen onder `backend/uploads/` (lokaal) of op een **Modal Volume** in productie, geoptimaliseerd als WebP met thumbnail.
+- Foto’s worden opgeslagen onder `backend/uploads/` (lokaal), geoptimaliseerd als WebP met thumbnail.
 - Waarnemingen bevatten tijdstip, coördinaten, notities, AI-confidence en volledige EXIF-snapshot.
 - Overzicht op de kaart en gekoppeld aan codex-detail (alle observaties per soort).
 
@@ -140,8 +140,8 @@ De frontend is gebouwd met **Angular 22** (standalone components, signals, zonel
 | **Kaart** | Leaflet | Interactieve waarnemingskaart |
 | **EXIF (client)** | exifr | Aanvullende metadata in de browser |
 | **Backend** | Python 3.11+, FastAPI, Uvicorn | REST JSON API |
-| **Data** | SQLModel, SQLite / [Turso](https://turso.tech) (libSQL) | ORM; lokaal `biologgr.db`, cloud via Turso |
-| **Hosting** | [Modal.com](https://modal.com) | Serverless FastAPI + Angular + BioCLIP |
+| **Data** | SQLModel, SQLite | ORM; lokaal `biologgr.db` |
+| **Auth** | HMAC-ondertekend token (stdlib) | Single-user login: publiek lezen, beschermd schrijven |
 | **Beeld** | Pillow, piexif | Validatie, EXIF, WebP-conversie |
 | **AI** | PyTorch, open_clip, BioCLIP | Zero-shot soortidentificatie |
 | **Tests** | pytest, Karma/Jasmine, Playwright | Backend-, unit- en e2e-tests |
@@ -154,6 +154,7 @@ Backend en frontend zijn **strikt gescheiden**; alle communicatie loopt via REST
 Biologgr/
 ├── backend/
 │   ├── main.py                 # FastAPI-routes, uploads, EXIF, observaties
+│   ├── auth.py                 # Login, token-ondertekening, verify_admin
 │   ├── models.py               # Animal, Observation, Badge, BadgeUnlock
 │   ├── database.py             # SQLite-engine & migraties
 │   ├── seed.py                 # 1019 soorten uit JSON-seed
@@ -163,68 +164,40 @@ Biologgr/
 │   │   ├── bioclip_service.py  # BioCLIP-load & predict
 │   │   └── badge_service.py    # 67 badges + 9 uitdagingen
 │   └── tests/
-├── modal_app.py                # Modal deploy: image build, Volume, ASGI
+├── docs/
+│   ├── screenshots/            # Screenshots voor deze README
+│   └── notes/                  # GEMINI.md, ROADMAP.md, prompts.md, persoonlijke notities
+├── plans/                      # Architectuurplan en todo
+├── SPEC.md                     # Functionele specificatie
+├── .env.example                # Sjabloon voor .env (ADMIN_PASSWORD, AUTH_SECRET_KEY)
 └── frontend/
     └── src/app/
-        ├── pages/              # codex, observe, map, badges
-        └── services/           # api.service.ts, theme, toast
+        ├── pages/              # codex, observe, map, badges, login
+        ├── guards/             # authGuard
+        ├── interceptors/       # auth.interceptor.ts
+        └── services/           # api, auth, theme, toast
 ```
-
----
-
-## Deployen op Modal.com (aanbevolen)
-
-Productie draait als één **Modal Web App** ([`modal_app.py`](modal_app.py)): de image bouwt de Angular-frontend, installeert FastAPI + **PyTorch CPU** + BioCLIP, en serveert alles via `@modal.asgi_app()`.
-
-| Component | Inrichting |
-|-----------|------------|
-| **Database** | Turso via secret `biologgr-turso` (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`) |
-| **Foto’s** | Persistent **Modal Volume** `biologgr-images`, gemount op `/app/backend/uploads` — dezelfde map als FastAPI’s `GET /uploads/...` |
-| **Codex-seed** | Bij containerstart: [`backend/seed.py`](backend/seed.py) (upsert soorten in Turso) |
-| **Static SPA** | Gebouwde Angular-app in `backend/static/` (same-origin API, geen CORS nodig) |
-
-### Eenmalige setup
-
-```powershell
-pip install modal
-modal token new
-```
-
-Turso-secrets (waarden uit je Turso-dashboard; zie [`.env.example`](.env.example)):
-
-```powershell
-cd "D:\MyProjects\Eigen projecten\Biologgr"
-
-modal secret create biologgr-turso `
-  TURSO_DATABASE_URL="libsql://jouw-db.turso.io" `
-  TURSO_AUTH_TOKEN="jouw-token"
-```
-
-Bestaande secret overschrijven: voeg `--force` toe. Alternatief: `modal secret create biologgr-turso --from-dotenv .env --force` (alleen lokaal, nooit committen).
-
-### Deploy
-
-```powershell
-modal deploy modal_app.py
-```
-
-De CLI toont de publieke URL (`https://…--biologgr-web.modal.run`). Lokaal testen met tijdelijke URL: `modal serve modal_app.py`.
-
-> **Eerste deploy:** image-build (npm, PyTorch, BioCLIP-download) kan **20–40 minuten** duren. Daarna zijn uploads persistent op het volume; na elke upload/delete commit [`modal_app.py`](modal_app.py) het volume zodat andere containers de bestanden zien.
-
-Volume handmatig inspecteren: `modal volume ls` en `modal shell --volume biologgr-images`.
 
 ---
 
 ## Lokaal opstarten
 
-Lokaal draait het project prima (SQLite in `biologgr.db`, frontend op poort 4200, API op 8000). **`pip install -r backend/requirements.txt` trekt PyTorch mee** — op **Windows** kan dat zwaar zijn. Voor dagelijks werk: apart venv; voor productie + AI: **Modal**.
+Lokaal draait het project prima (SQLite in `biologgr.db`, frontend op poort 4200, API op 8000). **`pip install -r backend/requirements.txt` trekt PyTorch mee** — op **Windows** kan dat zwaar zijn; gebruik daarvoor een apart venv.
 
-### Database & `.env` (vooral Windows)
+### Database & `.env`
 
-Turso (`TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN`) is bedoeld voor **Modal** (via `modal secret`, niet in de image). **Lokaal op Windows** laat je die variabelen het beste **uit** je `.env`. Zonder Turso valt [`backend/database.py`](backend/database.py) terug op **`biologgr.db`** in de projectroot.
+De app gebruikt standaard **SQLite** (`biologgr.db` in de projectroot); er is geen cloud-database nodig. Kopieer [`.env.example`](.env.example) naar `.env` en pas de waarden aan:
 
-Dat voorkomt dat de **libSQL-driver** (`sqlalchemy-libsql`) lokaal moet bouwen. Zie [`.env.example`](.env.example) als referentie voor Turso-waarden; kopieer die niet blind naar `.env` tenzij je bewust tegen Turso wilt ontwikkelen.
+| Variabele | Beschrijving |
+|-----------|--------------|
+| `ADMIN_PASSWORD` | Wachtwoord voor de enige beheerder (login op `/login`) |
+| `AUTH_SECRET_KEY` | Lange willekeurige string om tokens te ondertekenen |
+
+Er is geen cloud-database meer: alleen SQLite wordt ondersteund. `.env` en `biologgr.db` staan in `.gitignore`.
+
+### Authenticatie
+
+Lezen is publiek (codex, kaart, badges, statistieken); schrijven is beschermd. `POST /api/identify`, `POST /api/observations` en `DELETE /api/observations/{id}` vereisen `Authorization: Bearer <token>`, op te halen via `POST /api/auth/login`.
 
 ### Vereisten
 
@@ -247,7 +220,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-`requirements.txt` bevat FastAPI, SQLModel, Turso-driver (`sqlalchemy-libsql`) en de **AI-dependencies** (`torch`, `torchvision`, `open-clip-torch`, Pillow). Geen aparte BioCLIP-installatiestap meer nodig.
+`requirements.txt` bevat FastAPI, SQLModel, de **AI-dependencies** (`torch`, `torchvision`, `open-clip-torch`, Pillow). Geen aparte BioCLIP-installatiestap meer nodig.
 
 Start de API vanaf de **projectroot**:
 
@@ -289,14 +262,18 @@ Vult korte of placeholder-beschrijvingen aan met extracts van nl.wikipedia.org.
 | Methode | Pad | Beschrijving |
 |---------|-----|----------------|
 | `GET` | `/api/health` | Health + BioCLIP-status |
-| `POST` | `/api/identify` | AI top-3 op foto (geen opslag) |
+| `POST` | `/api/auth/login` | Login met `{ password }`, geeft Bearer-token |
+| `GET` | `/api/auth/verify` | Controleert of het token nog geldig is (🔒) |
+| `POST` | `/api/identify` | AI top-3 op foto (geen opslag) (🔒) |
 | `GET` | `/api/codex` | Alle soorten + laatste observatie |
 | `GET` | `/api/codex/{id}` | Detail + alle observaties |
-| `POST` | `/api/observations` | Nieuwe waarneming (multipart foto) |
+| `POST` | `/api/observations` | Nieuwe waarneming (multipart foto) (🔒) |
 | `GET` | `/api/observations` | Alle waarnemingen |
-| `DELETE` | `/api/observations/{id}` | Waarneming verwijderen |
+| `DELETE` | `/api/observations/{id}` | Waarneming verwijderen (🔒) |
 | `GET` | `/api/badges` | Badges met voortgang & unlock-status |
 | `GET` | `/api/stats` | Aggregatie voor dashboard/statistieken |
+
+🔒 = vereist `Authorization: Bearer <token>`.
 
 Query-parameter bij observatie: `is_wild` (`true` = in het wild, `false` = dierentuin/opvang).
 
@@ -350,14 +327,19 @@ npm run test:e2e  # Playwright
 | Bestand | Inhoud |
 |---------|--------|
 | [`SPEC.md`](SPEC.md) | Functionele vereisten, datamodellen, architectuur |
-| [`ROADMAP.md`](ROADMAP.md) | Geplande uitbreidingen |
-| [`prompts.md`](prompts.md) | Ontwikkelgeschiedenis en mijlpalen |
+| [`.env.example`](.env.example) | Sjabloon voor omgevingsvariabelen |
+| [`docs/notes/ROADMAP.md`](docs/notes/ROADMAP.md) | Geplande uitbreidingen |
+| [`docs/notes/prompts.md`](docs/notes/prompts.md) | Ontwikkelgeschiedenis en mijlpalen |
+| [`docs/notes/GEMINI.md`](docs/notes/GEMINI.md) | Werkafspraken en context voor AI-assistenten |
+| [`docs/screenshots/`](docs/screenshots/) | Screenshots gebruikt in deze README |
+| [`plans/`](plans/) | Architectuurplan en todo |
 
 ---
 
 ## Roadmap (korte blik)
 
-- Cloudopslag voor foto’s via Cloudflare R2 (Modal Volume dekt productie v1)
+- Draaien in Docker met lokale SQLite
+- Cloudopslag voor foto’s via Cloudflare R2
 - Multi-user accounts en sync
 - PostGIS / geavanceerde geo-analyses
 - Verdere optimalisatie van BioCLIP-inferentie op GPU

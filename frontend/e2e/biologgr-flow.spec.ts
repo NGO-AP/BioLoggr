@@ -110,6 +110,9 @@ test('Test 3 – kaartpagina laadt Leaflet-container en filterbalk', async ({ pa
 // ────────────────────────────────────────────────────────────────────────────
 
 test('Test 4 – waarnemingsformulier: type-toggle, locatiekaart en plaatsnaamzoeker', async ({ page }) => {
+  // /observe is beveiligd: simuleer een ingelogde beheerder (token + geldige verify)
+  await page.addInitScript(() => sessionStorage.setItem('biologgr_token', 'e2e-token'));
+  await page.route('**/api/auth/verify', route => route.fulfill({ json: { valid: true } }));
   await page.goto('/observe');
 
   // --- 4a: "In het wild"-knop standaard actief (heeft emerald border) ---
@@ -148,4 +151,15 @@ test('Test 4 – waarnemingsformulier: type-toggle, locatiekaart en plaatsnaamzo
   await firstResult.click();
   const coordLine = page.locator('p').filter({ hasText: /°\s*N/ });
   await expect(coordLine).not.toContainText('51.2000');
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Test 5 — Auth: /observe stuurt niet-ingelogde bezoekers naar /login
+// ────────────────────────────────────────────────────────────────────────────
+
+test('Test 5 – /observe redirect naar /login zonder token, met wachtwoordveld', async ({ page }) => {
+  await page.goto('/observe');
+  await expect(page).toHaveURL(/\/login/);
+  await expect(page.locator('input[type=password]')).toBeVisible();
+  await expect(page).toHaveURL(/returnUrl=%2Fobserve/);
 });

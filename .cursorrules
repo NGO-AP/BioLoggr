@@ -66,7 +66,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Core Sources of Truth
 - **SPEC.md**: Bevat alle functionele vereisten, datamodellen en architectuurkeuzes. Raadpleeg dit ALTIJD vóór implementatie.
-- **PROMPT.md**: Bevat de actieve sprint, takenlijst en instructies. Werk taken systematisch af en markeer ze als voltooid.
+- **docs/notes/**: Bevat ROADMAP.md, prompts.md en overige projectnotities (de actieve takenlijst staat in ROADMAP.md). Werk taken systematisch af en markeer ze als voltooid.
 
 ## Tech Stack Constraints
 - **Backend**: Python 3.11+, FastAPI, SQLite (SQLAlchemy/SQLModel), BioCLIP lokaal.

@@ -1,8 +1,9 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink, ActivatedRoute } from '@angular/router';
+import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { ApiService, Animal, Observation } from '../../services/api.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-codex',
@@ -414,7 +415,9 @@ import { ApiService, Animal, Observation } from '../../services/api.service';
 })
 export class CodexComponent implements OnInit {
   private apiService = inject(ApiService);
+  private authService = inject(AuthService);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   /** Zelfde host als de dierkaarten: `http://localhost:8000` + image_path / image_url. */
   protected readonly backendUrl = 'http://localhost:8000';
@@ -684,6 +687,11 @@ export class CodexComponent implements OnInit {
   }
 
   protected confirmDeleteObservation(obsId: number, animalId: number): void {
+    if (!this.authService.isLoggedIn()) {
+      // speciesId in de returnUrl: na het inloggen opent de detailmodal opnieuw
+      void this.router.navigate(['/login'], { queryParams: { returnUrl: `/?speciesId=${animalId}` } });
+      return;
+    }
     if (!confirm('Weet je zeker dat je deze waarneming wilt verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
     this.apiService.deleteObservation(obsId).subscribe({
       next: () => {

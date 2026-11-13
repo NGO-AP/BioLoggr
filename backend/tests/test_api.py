@@ -1,13 +1,10 @@
 import io
 import os
-import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
-from sqlmodel import SQLModel, create_engine, Session
-from sqlmodel.pool import StaticPool
+from sqlmodel import Session
 
-from backend.main import app, get_session
-from backend.models import Animal, Observation, Badge
+from backend.models import Animal, Observation
 
 
 def _make_jpeg_bytes(width: int = 100, height: int = 100) -> bytes:
@@ -16,41 +13,6 @@ def _make_jpeg_bytes(width: int = 100, height: int = 100) -> bytes:
     buf = io.BytesIO()
     img.save(buf, "JPEG")
     return buf.getvalue()
-
-@pytest.fixture(name="session")
-def session_fixture():
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        # Seed initial test data
-        session.add(Animal(
-            scientific_name="Vulpes vulpes",
-            dutch_name="Rode Vos",
-            rarity="Common",
-            description="Test fox description",
-            extra_info={"habitat": "Forest"}
-        ))
-        session.add(Badge(
-            name="Eerste Waarneming",
-            description="Test badge description",
-            icon="🏆"
-        ))
-        session.commit()
-        yield session
-
-@pytest.fixture(name="client")
-def client_fixture(session: Session):
-    def get_session_override():
-        return session
-
-    app.dependency_overrides[get_session] = get_session_override
-    client = TestClient(app)
-    yield client
-    app.dependency_overrides.clear()
 
 def test_health_check(client: TestClient):
     response = client.get("/api/health")
@@ -84,7 +46,7 @@ def test_get_badges(client: TestClient):
     assert "percentage" in data[0]
     assert "is_challenge" in data[0]
 
-def test_create_observation(client: TestClient, tmp_path):
+def test_create_observation(client: TestClient, auth_headers, tmp_path):
     jpeg_bytes = _make_jpeg_bytes()
     dummy_img = tmp_path / "test_fox.jpg"
     dummy_img.write_bytes(jpeg_bytes)
@@ -92,7 +54,8 @@ def test_create_observation(client: TestClient, tmp_path):
     with open(dummy_img, "rb") as f:
         response = client.post(
             "/api/observations?latitude=51.2194&longitude=4.4025&notes=Test+observation",
-            files={"file": ("test_fox.jpg", f, "image/jpeg")}
+            files={"file": ("test_fox.jpg", f, "image/jpeg")},
+            headers=auth_headers,
         )
 
     assert response.status_code == 200
@@ -132,7 +95,7 @@ def test_get_animal_detail_with_all_observations(client: TestClient, session: Se
     assert data["all_observations"][0]["thumbnail_path"] == "/uploads/test_thumb.webp"
 
 
-def test_delete_observation(client: TestClient, session: Session):
+def test_delete_observation(client: TestClient, auth_headers, session: Session):
     animal = session.exec(
         __import__("sqlmodel", fromlist=["select"]).select(Animal).where(Animal.scientific_name == "Vulpes vulpes")
     ).first()
@@ -148,7 +111,7 @@ def test_delete_observation(client: TestClient, session: Session):
     session.refresh(obs)
     obs_id = obs.id
 
-    response = client.delete(f"/api/observations/{obs_id}")
+    response = client.delete(f"/api/observations/{obs_id}", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
     assert data["ok"] is True
@@ -160,6 +123,6 @@ def test_delete_observation(client: TestClient, session: Session):
     assert deleted is None
 
 
-def test_delete_observation_not_found(client: TestClient):
-    response = client.delete("/api/observations/99999")
+def test_delete_observation_not_found(client: TestClient, auth_headers):
+    response = client.delete("/api/observations/99999", headers=auth_headers)
     assert response.status_code == 404

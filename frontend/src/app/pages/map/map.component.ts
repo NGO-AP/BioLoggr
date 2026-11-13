@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, signal, computed, inject, afterEveryRende
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { ApiService, Animal } from '../../services/api.service';
+import { AuthService } from '../../services/auth.service';
 import * as L from 'leaflet';
 
 const CATEGORIES = ['Alles', 'Zoogdieren', 'Vogels', 'Insecten', 'Reptielen & Amfibieën'] as const;
@@ -87,6 +88,7 @@ const BELGIUM_ZOOM = 8;
 })
 export class MapComponent implements OnInit, OnDestroy {
   private apiService = inject(ApiService);
+  private authService = inject(AuthService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
@@ -159,6 +161,10 @@ export class MapComponent implements OnInit, OnDestroy {
     const obsId = parseInt(btn.dataset['delObs'] ?? '', 10);
     const animalId = parseInt(btn.dataset['animalId'] ?? '', 10);
     if (isNaN(obsId) || isNaN(animalId)) return;
+    if (!this.authService.isLoggedIn()) {
+      void this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
+      return;
+    }
     if (!confirm('Weet je zeker dat je deze waarneming wilt verwijderen?')) return;
     this.apiService.deleteObservation(obsId).subscribe({
       next: () => {

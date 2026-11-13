@@ -10,54 +10,18 @@ load_dotenv(_PROJECT_ROOT / ".env")
 LOCAL_SQLITE_URL = "sqlite:///biologgr.db"
 
 
-def _turso_credentials() -> tuple[str, str] | None:
-    url = (os.getenv("TURSO_DATABASE_URL") or "").strip()
-    if not url:
-        database_url = (os.getenv("DATABASE_URL") or "").strip()
-        if database_url.startswith("libsql://"):
-            url = database_url
-    token = (os.getenv("TURSO_AUTH_TOKEN") or "").strip()
-    if url and token:
-        return url, token
-    return None
-
-
-def _create_db_engine():
-    turso = _turso_credentials()
-    if turso:
-        turso_url, turso_token = turso
-        try:
-            return create_engine(
-                f"sqlite+{turso_url}?secure=true",
-                connect_args={"auth_token": turso_token},
-            )
-        except Exception as exc:
-            raise RuntimeError(
-                "Turso is configured (TURSO_DATABASE_URL + TURSO_AUTH_TOKEN) but the "
-                "libSQL SQLAlchemy driver could not be loaded. Install backend "
-                "dependencies (sqlalchemy-libsql) or unset Turso variables for local SQLite."
-            ) from exc
-
-    database_url = (os.getenv("DATABASE_URL") or LOCAL_SQLITE_URL).strip()
-    if database_url.startswith("libsql://"):
-        raise RuntimeError(
-            "DATABASE_URL uses libsql://; set TURSO_AUTH_TOKEN (and optionally "
-            "TURSO_DATABASE_URL) for Turso, or use a sqlite:/// URL locally."
-        )
-    connect_args: dict = {}
-    if database_url.startswith("sqlite"):
-        connect_args["check_same_thread"] = False
-    return create_engine(database_url, connect_args=connect_args)
+def _database_url() -> str:
+    url = (os.getenv("DATABASE_URL") or LOCAL_SQLITE_URL).strip()
+    if not url.startswith("sqlite"):
+        raise RuntimeError(f"Alleen SQLite wordt ondersteund; ongeldige DATABASE_URL: {url!r}")
+    return url
 
 
 def _uses_local_sqlite_file() -> bool:
-    if _turso_credentials():
-        return False
-    url = (os.getenv("DATABASE_URL") or LOCAL_SQLITE_URL).strip()
-    return url.startswith("sqlite://") and ":memory:" not in url
+    return ":memory:" not in _database_url()
 
 
-engine = _create_db_engine()
+engine = create_engine(_database_url(), connect_args={"check_same_thread": False})
 
 
 def init_db():
