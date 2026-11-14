@@ -17,7 +17,12 @@ from seed import seed_species, seed_badges
 from services.bioclip_service import bioclip
 from services import badge_service
 
-app = FastAPI(title="BioLoggr API", version="1.0.0")
+app = FastAPI(
+    title="BioLoggr API",
+    version="1.0.0",
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json"
+)
 
 # CORS: configureerbaar via omgevingsvariabele voor productie.
 # Standaard localhost-origins voor lokale ontwikkeling.
