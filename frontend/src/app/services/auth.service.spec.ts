@@ -4,8 +4,9 @@ import { provideHttpClientTesting, HttpTestingController } from '@angular/common
 import { Router, provideRouter } from '@angular/router';
 import { AuthService } from './auth.service';
 import { authInterceptor } from '../interceptors/auth.interceptor';
+import { environment } from '../../environments/environment';
 
-const API = 'http://localhost:8000/api';
+const API = environment.apiUrl;
 
 describe('AuthService + authInterceptor', () => {
   let service: AuthService;

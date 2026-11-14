@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { BadgesComponent } from './badges.component';
 import { ApiService, Badge } from '../../services/api.service';
+import { environment } from '../../../environments/environment';
 
 describe('BadgesComponent', () => {
   let component: BadgesComponent;
@@ -35,7 +36,7 @@ describe('BadgesComponent', () => {
 
     fixture.detectChanges(); // Triggers ngOnInit
 
-    const request = httpMock.expectOne('http://localhost:8000/api/badges');
+    const request = httpMock.expectOne(`${environment.apiUrl}/badges`);
     expect(request.request.method).toBe('GET');
     request.flush(dummyBadges);
 

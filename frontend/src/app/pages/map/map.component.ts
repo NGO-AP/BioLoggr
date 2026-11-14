@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { ApiService, Animal } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
+import { environment } from '../../../environments/environment';
 import * as L from 'leaflet';
 
 const CATEGORIES = ['Alles', 'Zoogdieren', 'Vogels', 'Insecten', 'Reptielen & Amfibieën'] as const;
@@ -268,7 +269,7 @@ export class MapComponent implements OnInit, OnDestroy {
       second: '2-digit',
       hour12: false,
     });
-    const imgUrl = `http://localhost:8000${obs.image_path}`;
+    const imgUrl = `${environment.mediaUrl}${obs.image_path}`;
     // Escape om XSS te vermijden
     const name = this.esc(animal.dutch_name);
     const sci  = this.esc(animal.scientific_name);

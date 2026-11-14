@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { shareReplay, tap } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 export interface Observation {
   id: number;
@@ -81,7 +82,7 @@ export interface Stats {
 })
 export class ApiService {
   private http = inject(HttpClient);
-  private baseUrl = 'http://localhost:8000/api';
+  private baseUrl = environment.apiUrl;
   private codexCache$: Observable<Animal[]> | null = null;
 
   getCodex(options?: { refresh?: boolean }): Observable<Animal[]> {

@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { ApiService, Animal, Observation, Badge } from './api.service';
+import { environment } from '../../environments/environment';
 
 describe('ApiService', () => {
   let service: ApiService;
@@ -37,7 +38,7 @@ describe('ApiService', () => {
       expect(animals).toEqual(dummyAnimals);
     });
 
-    const request = httpMock.expectOne('http://localhost:8000/api/codex');
+    const request = httpMock.expectOne(`${environment.apiUrl}/codex`);
     expect(request.request.method).toBe('GET');
     request.flush(dummyAnimals);
   });
@@ -48,12 +49,12 @@ describe('ApiService', () => {
     ];
 
     service.getCodex().subscribe();
-    httpMock.expectOne('http://localhost:8000/api/codex').flush(dummyAnimals);
+    httpMock.expectOne(`${environment.apiUrl}/codex`).flush(dummyAnimals);
 
     service.getCodex().subscribe((animals) => {
       expect(animals).toEqual(dummyAnimals);
     });
-    httpMock.expectNone('http://localhost:8000/api/codex');
+    httpMock.expectNone(`${environment.apiUrl}/codex`);
   });
 
   it('should fetch observations via GET /api/observations', () => {
@@ -66,7 +67,7 @@ describe('ApiService', () => {
       expect(obs).toEqual(dummyObs);
     });
 
-    const request = httpMock.expectOne('http://localhost:8000/api/observations');
+    const request = httpMock.expectOne(`${environment.apiUrl}/observations`);
     expect(request.request.method).toBe('GET');
     request.flush(dummyObs);
   });
@@ -81,7 +82,7 @@ describe('ApiService', () => {
       expect(badges).toEqual(dummyBadges);
     });
 
-    const request = httpMock.expectOne('http://localhost:8000/api/badges');
+    const request = httpMock.expectOne(`${environment.apiUrl}/badges`);
     expect(request.request.method).toBe('GET');
     request.flush(dummyBadges);
   });

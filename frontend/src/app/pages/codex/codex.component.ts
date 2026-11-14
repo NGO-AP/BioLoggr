@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { ApiService, Animal, Observation } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-codex',
@@ -152,14 +153,14 @@ import { AuthService } from '../../services/auth.service';
                   <div class="h-48 bg-gray-100 dark:bg-gray-700 relative overflow-hidden">
                     @if (animal.latest_observation && !brokenImages().has(animal.id)) {
                       <img
-                        [src]="'http://localhost:8000' + animal.latest_observation.image_path"
+                        [src]="backendUrl + animal.latest_observation.image_path"
                         [alt]="animal.dutch_name"
                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         (error)="markImageBroken(animal.id)"
                       >
                     } @else if (animal.image_url && !brokenImages().has(animal.id)) {
                       <img
-                        [src]="'http://localhost:8000' + animal.image_url"
+                        [src]="backendUrl + animal.image_url"
                         [alt]="animal.dutch_name"
                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 brightness-0 opacity-30"
                         (error)="markImageBroken(animal.id)"
@@ -233,13 +234,13 @@ import { AuthService } from '../../services/auth.service';
               <div class="h-72 bg-gray-900 relative">
                 @if (animal.latest_observation) {
                   <img
-                    [src]="'http://localhost:8000' + animal.latest_observation.image_path"
+                    [src]="backendUrl + animal.latest_observation.image_path"
                     [alt]="animal.dutch_name"
                     class="w-full h-full object-cover"
                   >
                 } @else if (animal.image_url) {
                   <img
-                    [src]="'http://localhost:8000' + animal.image_url"
+                    [src]="backendUrl + animal.image_url"
                     [alt]="animal.dutch_name"
                     class="w-full h-full object-cover brightness-0 opacity-30"
                   >
@@ -325,7 +326,7 @@ import { AuthService } from '../../services/auth.service';
                       @for (obs of filteredDetailObservations(); track obs.id) {
                         <div class="bg-emerald-50/60 dark:bg-emerald-900/20 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/50 overflow-hidden flex flex-col sm:flex-row items-stretch">
                             <img
-                              [src]="'http://localhost:8000' + (obs.thumbnail_path ?? obs.image_path)"
+                              [src]="backendUrl + (obs.thumbnail_path ?? obs.image_path)"
                               alt="Waarneming foto"
                               class="w-full h-36 sm:w-36 sm:h-auto sm:self-stretch shrink-0 object-cover rounded-t-2xl sm:rounded-t-none sm:rounded-l-2xl border-b sm:border-b-0 sm:border-r border-emerald-200/80 dark:border-emerald-800/50"
                             />
@@ -419,8 +420,8 @@ export class CodexComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
-  /** Zelfde host als de dierkaarten: `http://localhost:8000` + image_path / image_url. */
-  protected readonly backendUrl = 'http://localhost:8000';
+  /** Prefix voor image_path / image_url, uit de environment-configuratie. */
+  protected readonly backendUrl = environment.mediaUrl;
 
   protected readonly animals = signal<Animal[]>([]);
   protected readonly loading = signal<boolean>(true);
