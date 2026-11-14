@@ -19,8 +19,8 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from sqlmodel import Session, select
-from backend.database import engine, init_db
-from backend.models import Animal, Badge
+from database import engine, init_db
+from models import Animal, Badge
 
 BENELUX_JSON_PATH = os.path.join(os.path.dirname(__file__), "data", "species_benelux.json")
 ZOO_JSON_PATH = os.path.join(os.path.dirname(__file__), "data", "species_zoo.json")

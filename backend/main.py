@@ -10,12 +10,12 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 from PIL import Image, ImageOps, ExifTags
 
-from backend.auth import router as auth_router, verify_admin
-from backend.database import init_db, get_session
-from backend.models import Animal, Observation, Badge
-from backend.seed import seed_species, seed_badges
-from backend.services.bioclip_service import bioclip
-from backend.services import badge_service
+from auth import router as auth_router, verify_admin
+from database import init_db, get_session
+from models import Animal, Observation, Badge
+from seed import seed_species, seed_badges
+from services.bioclip_service import bioclip
+from services import badge_service
 
 app = FastAPI(title="BioLoggr API", version="1.0.0")
 
@@ -270,7 +270,7 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 @app.on_event("startup")
 def on_startup():
     init_db()
-    from backend.database import engine
+    from database import engine
     with Session(engine) as session:
         json_path = os.path.join(os.path.dirname(__file__), "data", "species_benelux.json")
         if os.path.exists(json_path):

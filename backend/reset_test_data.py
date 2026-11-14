@@ -14,8 +14,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from sqlmodel import Session, delete
 
-from backend.database import engine
-from backend.models import BadgeUnlock, Observation
+from database import engine
+from models import BadgeUnlock, Observation
 
 
 def main() -> None:

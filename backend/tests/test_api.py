@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 from sqlmodel import Session
 
-from backend.models import Animal, Observation
+from models import Animal, Observation
 
 
 def _make_jpeg_bytes(width: int = 100, height: int = 100) -> bytes:

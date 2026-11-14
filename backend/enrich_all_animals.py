@@ -16,8 +16,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from sqlmodel import Session, select
 
-from backend.database import engine
-from backend.models import Animal
+from database import engine
+from models import Animal
 
 WIKI_API_URL = "https://nl.wikipedia.org/w/api.php"
 BATCH_COMMIT_SIZE = 50

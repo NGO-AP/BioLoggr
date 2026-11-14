@@ -8,9 +8,9 @@ from fastapi.testclient import TestClient
 from PIL import Image
 from sqlmodel import Session, select
 
-from backend.main import app, get_session
-from backend.models import Animal
-from backend.services.bioclip_service import BioCLIPService
+from main import app, get_session
+from models import Animal
+from services.bioclip_service import BioCLIPService
 
 
 def _jpeg_bytes() -> bytes:

@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend import auth
-from backend.tests.conftest import TEST_PASSWORD, TEST_SECRET
+from tests.conftest import TEST_PASSWORD, TEST_SECRET
 
 
 def test_login_success_returns_token(client: TestClient):

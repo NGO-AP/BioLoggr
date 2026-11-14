@@ -11,7 +11,7 @@ from typing import Any
 
 from sqlmodel import Session, select
 
-from backend.models import Animal, BadgeUnlock, Observation
+from models import Animal, BadgeUnlock, Observation
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Taxonomic helpers — genus-set primary, dutch_name keyword fallback

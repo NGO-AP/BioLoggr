@@ -8,9 +8,9 @@ from PIL import Image
 from sqlmodel import SQLModel, Session, create_engine
 from sqlmodel.pool import StaticPool
 
-from backend.main import app, get_session
-from backend.models import Animal, BadgeUnlock, Observation
-from backend.services.badge_service import (
+from main import app, get_session
+from models import Animal, BadgeUnlock, Observation
+from services.badge_service import (
     BADGE_REGISTRY,
     evaluate_unlocked_badge_ids,
     get_badges_with_progress,

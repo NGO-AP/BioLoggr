@@ -6,7 +6,7 @@ Cacht tekst-embeddings voor alle DB-soorten op schijf zodat
 identficatie per request snel is (~50 ms op CPU).
 
 Gebruik:
-    from backend.services.bioclip_service import bioclip
+    from services.bioclip_service import bioclip
     bioclip.load_in_background(animals)   # tijdens startup
     result = bioclip.predict(image_bytes)  # per request
 """

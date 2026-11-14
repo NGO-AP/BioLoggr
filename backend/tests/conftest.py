@@ -4,8 +4,8 @@ from sqlmodel import SQLModel, create_engine, Session
 from sqlmodel.pool import StaticPool
 
 from backend import auth
-from backend.main import app, get_session
-from backend.models import Animal, Badge
+from main import app, get_session
+from models import Animal, Badge
 
 TEST_PASSWORD = "test-password"
 TEST_SECRET = "test-secret-key-for-pytest"
